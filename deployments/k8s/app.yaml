@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crypto-tracker-app
+  namespace: ctt-dev
+  labels:
+    app: crypto-tracker-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: crypto-tracker-app
+  template:
+    metadata:
+      labels:
+        app: crypto-tracker-app
+    spec:
+      containers:
+        - name: app
+          image: crypto-tracker-trader:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: MASTER_DATABASE_URL
+              value: "postgres://ctt:password@postgres:5432/crypto?sslmode=disable"
+            - name: ETHEREUM_NODE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: ETHEREUM_NODE_URL
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: JWT_SECRET
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: ENCRYPTION_KEY
+            - name: PRICE_SYMBOLS
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: PRICE_SYMBOLS
+            - name: PRICE_SYNC_INTERVAL_S
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: PRICE_SYNC_INTERVAL_S
+            - name: EXCHANGE_SYNC_INTERVAL_S
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: EXCHANGE_SYNC_INTERVAL_S
+            - name: DEFI_SYNC_INTERVAL_S
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DEFI_SYNC_INTERVAL_S
+            - name: REDIS_HOST
+              value: "redis"
+            - name: REDIS_PORT
+              value: "6379"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: crypto-tracker-app
+  namespace: ctt-dev
+  labels:
+    app: crypto-tracker-app
+spec:
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080
+  selector:
+    app: crypto-tracker-app
