@@ -37,13 +37,14 @@
 │  handler.go / wallet_handler.go / price_handler.go                   │
 │  exchange_handler.go / defi_handler.go / portfolio_summary_handler.go│
 │  middleware/auth.go (JWT検証 → userID を ctx に注入)                   │
+│  GET /metrics (promhttp → Prometheus metrics)                       │
 └───────────────────────────────┬─────────────────────────────────────┘
                                 │ コンシューマー側インターフェース
 ┌───────────────────────────────▼─────────────────────────────────────┐
 │                      internal/service (業務ロジック)                   │
 │  user_service        … auth / user 管理                              │
 │  wallet_service      … ウォレット CRUD・所有権チェック                   │
-│  price_service       … 価格取得・定期同期（ticker）                    │
+│  price_service       … 価格取得・定期同期（ticker）+ Kafka publish     │
 │  exchange_service    … キー暗号化・残高同期（ticker）                  │
 │  defi_sync_service   … DeFi ポジション同期（ticker）                   │
 │  portfolio_aggregation_service … 統合ポートフォリオ集計                  │
@@ -62,6 +63,13 @@
 │  uniswap     │  │              │        └────────────────┘
 │ (将来: aave) │  └──────────────┘
 └──────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                    インフラ統合（オプショナル）                           │
+│  internal/cache/redis.go    … Redis クライアント（go-redis/v9）       │
+│  internal/event/kafka.go    … Kafka Producer/Consumer（kafka-go）   │
+│  internal/metrics/prometheus.go … Prometheus メトリクス定義           │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ### 2.3 最終機能セット
@@ -226,6 +234,62 @@ deployments/migrations/0001..0007     … .up/.down ペア（0003以降）
 - Dockerfile は `golang:1.25-alpine` のまま（`go.mod` は 1.26.4）— 軽微なドリフト
 - `PortfolioStore.Close()`（`portfolio_store.go:23`）と `main.go` の `dbPool.Close()`（`main.go:46`）の二重 Close リスク。現在は main だけが Close を呼ぶため実被害なし
 
+### 3.7 インフラ統合状態（Redis / Kafka / Prometheus）
+
+#### Redis 統合
+
+| 項目 | 状態 |
+|------|------|
+| クライアント | `internal/cache/redis.go` - `go-redis/v9` ベースの `RedisClient`（Get/Set/Del/Close） |
+| 設定 | `config.go` - `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, `REDIS_DB` 環境変数 |
+| 統合 | `main.go:51-59` - `REDIS_HOST` 設定時のみ接続（オプショナル）。未設定時はスキップ |
+| テスト | `internal/cache/redis_test.go` - Redis 不可時 `t.Skip` で正常的スキップ |
+| 現状 | クライアント実装済みだが、サービス層でのキャッシュ利用は未実装（価格・セッション等への適用は未） |
+
+#### Kafka 統合
+
+| 項目 | 状態 |
+|------|------|
+| プロデューサー | `internal/event/kafka.go` - `kafka-go` ベースの `KafkaProducer`（PublishPriceEvent） |
+| コンシューマー | `internal/event/kafka.go` - `KafkaConsumer`（Start/Close、メッセージループ付き） |
+| 設定 | `config.go` - `KAFKA_BROKER`, `KAFKA_TOPIC_PRICES`, `KAFKA_TOPIC_EVENTS`, `KAFKA_CONSUMER_GROUP` |
+| 統合 | `main.go:62-67` - `KAFKA_BROKER` 設定時のみ初期化（オプショナル） |
+| テスト | `internal/event/kafka_test.go` - `PriceEvent` の marshal/unmarshal テスト |
+| 現状 | `PriceService`（`price_service.go:89`）が Kafka プロデューサーを受け取り価格更新時に publish。コンシューマーは未接続 |
+
+#### Prometheus メトリクス
+
+| 項目 | 状態 |
+|------|------|
+| 定義 | `internal/metrics/prometheus.go` - 5 メトリクス登録済み |
+| エンドポイント | `handler.go:163` - `GET /metrics`（`promhttp.Handler`） |
+| 設定 | `config.go` - `PROMETHEUS_ENABLED`（デフォルト: true） |
+| 統合済みメトリクス | `price_service.go:61` - `price_updates_total` インクリメント |
+
+**定義済みメトリクス一覧:**
+
+| メトリクス名 | タイプ | ラベル | 説明 |
+|-------------|--------|--------|------|
+| `http_requests_total` | Counter | method, path, status | HTTP リクエスト総数 |
+| `http_request_duration_seconds` | Histogram | method, path | HTTP リクエスト応答時間 |
+| `price_updates_total` | Counter | symbol, source | 価格更新回数 |
+| `active_connections` | Gauge | — | アクティブ接続数 |
+| `database_queries_total` | Counter | operation, table | DB クエリ総数 |
+
+**/metrics エンドポイントの使用方法:**
+
+```bash
+# サーバー起動後
+curl -s http://localhost:8080/metrics
+
+# Prometheus 設定例（prometheus.yml）
+# scrape_configs:
+#   - job_name: 'crypto-tracker-trader'
+#     static_configs:
+#       - targets: ['localhost:8080']
+#     metrics_path: '/metrics'
+```
+
 ---
 
 ## 4. 設計の意図と設計理由（Design Intent & Rationale）
@@ -357,3 +421,12 @@ deployments/migrations/0001..0007     … .up/.down ペア（0003以降）
 | `EXCHANGE_SYNC_INTERVAL_S` | | `300` | 残高同期間隔 |
 | `DEFI_SYNC_INTERVAL_S` | | `900` | DeFi 同期間隔 |
 | `SLAVE_DATABASE_URL` | | — | 読み取り専用 DB（未使用） |
+| `REDIS_HOST` | | `localhost` | Redis ホスト |
+| `REDIS_PORT` | | `6379` | Redis ポート |
+| `REDIS_PASSWORD` | | — | Redis パスワード（空=認証なし） |
+| `REDIS_DB` | | `0` | Redis DB 番号 |
+| `KAFKA_BROKER` | | `localhost:9092` | Kafka ブローカーアドレス |
+| `KAFKA_TOPIC_PRICES` | | `price-events` | 価格イベント Topic |
+| `KAFKA_TOPIC_EVENTS` | | `app-events` | アプリイベント Topic |
+| `KAFKA_CONSUMER_GROUP` | | `crypto-tracker` | コンシューマーグループ ID |
+| `PROMETHEUS_ENABLED` | | `true` | Prometheus メトリクス有効化 |
