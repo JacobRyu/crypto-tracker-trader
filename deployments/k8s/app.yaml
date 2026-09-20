@@ -82,6 +82,8 @@ spec:
                 configMapKeyRef:
                   name: kafka-config
                   key: KAFKA_TOPIC_PRICES
+            - name: PROMETHEUS_ENABLED
+              value: "true"
           readinessProbe:
             httpGet:
               path: /health
