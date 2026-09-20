@@ -10,6 +10,7 @@ import (
 	"crypto-tracker-trader/internal/client/coingecko"
 	"crypto-tracker-trader/internal/client/defi/uniswap"
 	"crypto-tracker-trader/internal/config"
+	"crypto-tracker-trader/internal/event"
 	"crypto-tracker-trader/internal/service"
 	"crypto-tracker-trader/internal/store"
 
@@ -55,6 +56,14 @@ func main() {
 			log.Println("Redis connected successfully")
 			defer redisClient.Close()
 		}
+	}
+
+	// Kafka producer (optional).
+	var kafkaProducer *event.KafkaProducer
+	if cfg.KafkaBroker != "" {
+		kafkaProducer = event.NewKafkaProducer(cfg.KafkaBroker, cfg.KafkaTopicPrices)
+		log.Println("Kafka producer initialized")
+		defer kafkaProducer.Close()
 	}
 
 	// Stores.
