@@ -116,6 +116,10 @@ func main() {
 	})
 	apiHandler.RegisterRoutes(r)
 
+	if cfg.PrometheusEnabled {
+		log.Println("Prometheus metrics enabled")
+	}
+
 	addr := ":" + cfg.Port
 	log.Printf("Starting server on %s", addr)
 	if err := r.Run(addr); err != nil {
