@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"crypto-tracker-trader/internal/api"
+	"crypto-tracker-trader/internal/cache"
 	"crypto-tracker-trader/internal/client/coingecko"
 	"crypto-tracker-trader/internal/client/defi/uniswap"
 	"crypto-tracker-trader/internal/config"
@@ -44,6 +45,17 @@ func main() {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
 	defer dbPool.Close()
+
+	// Redis client (optional).
+	if cfg.RedisHost != "" {
+		redisClient, redisErr := cache.NewRedisClient(cfg.RedisHost, cfg.RedisPort, cfg.RedisPassword, cfg.RedisDB)
+		if redisErr != nil {
+			log.Printf("Warning: Redis connection failed: %v", redisErr)
+		} else {
+			log.Println("Redis connected successfully")
+			defer redisClient.Close()
+		}
+	}
 
 	// Stores.
 	portfolioStore := store.NewPortfolioStore(dbPool)
