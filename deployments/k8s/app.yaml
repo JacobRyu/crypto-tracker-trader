@@ -24,6 +24,7 @@ spec:
           env:
             - name: PORT
               value: "8080"
+            # TODO: Use a Kubernetes Secret for MASTER_DATABASE_URL in production
             - name: MASTER_DATABASE_URL
               value: "postgres://ctt:password@postgres:5432/crypto?sslmode=disable"
             - name: ETHEREUM_NODE_URL

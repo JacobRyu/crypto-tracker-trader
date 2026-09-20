@@ -30,4 +30,12 @@ go.work.sum
 # Editor/IDE
 .idea/
 .vscode/
+
+# Terraform
 .terraform/
+terraform.tfstate
+terraform.tfstate.backup
+*.tfstate
+
+# Kubeconfig outputs
+*-config
