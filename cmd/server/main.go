@@ -86,7 +86,7 @@ func main() {
 	blockchainService := service.NewBlockchainDataFetcherService(ethClient, portfolioStore)
 	userService := service.NewUserService(userStore)
 	walletService := service.NewWalletService(walletStore)
-	priceService := service.NewPriceService(coingecko.New(), priceStore, "coingecko")
+	priceService := service.NewPriceService(coingecko.New(), priceStore, "coingecko", kafkaProducer)
 	exchangeService := service.NewExchangeService(exchangeStore, cfg.EncryptionKey)
 	uniswapClient := uniswap.New(ethClient)
 	defiService := service.NewDefiSyncService(defiStore, walletStore, uniswapClient)

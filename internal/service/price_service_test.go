@@ -31,7 +31,7 @@ func (m *mockPriceFetcher) FetchPrices(ctx context.Context, symbols []string) (m
 // --- helpers ---
 
 func newTestPriceService(mf *mockPriceFetcher, ms *storemod.MockPriceStore) *PriceService {
-	return NewPriceService(mf, ms, "test")
+	return NewPriceService(mf, ms, "test", nil)
 }
 
 // --- tests ---

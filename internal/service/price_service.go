@@ -6,6 +6,8 @@ import (
 	"log"
 	"time"
 
+	"crypto-tracker-trader/internal/event"
+	"crypto-tracker-trader/internal/metrics"
 	"crypto-tracker-trader/internal/model"
 	"crypto-tracker-trader/internal/store"
 )
@@ -18,15 +20,16 @@ type PriceService struct {
 	fetcher    PriceFetcher
 	priceStore store.PriceStoreInterface
 	source     string
+	kafka      *event.KafkaProducer
 }
 
 // NewPriceService creates a new PriceService.
 // source identifies the data provider (e.g. "coingecko").
-func NewPriceService(fetcher PriceFetcher, priceStore store.PriceStoreInterface, source string) *PriceService {
+func NewPriceService(fetcher PriceFetcher, priceStore store.PriceStoreInterface, source string, kafka *event.KafkaProducer) *PriceService {
 	if source == "" {
 		source = "coingecko"
 	}
-	return &PriceService{fetcher: fetcher, priceStore: priceStore, source: source}
+	return &PriceService{fetcher: fetcher, priceStore: priceStore, source: source, kafka: kafka}
 }
 
 // FetchAndSave fetches current prices for the given symbols and persists them.
@@ -38,7 +41,24 @@ func (s *PriceService) FetchAndSave(ctx context.Context, symbols []string) error
 	for symbol, priceUSD := range prices {
 		if err := s.priceStore.SavePrice(symbol, priceUSD, s.source); err != nil {
 			log.Printf("PriceService: failed to save price for %s: %v", symbol, err)
+			continue
 		}
+
+		// Publish to Kafka.
+		if s.kafka != nil {
+			evt := event.PriceEvent{
+				Symbol:    symbol,
+				PriceUSD:  priceUSD,
+				Source:    s.source,
+				Timestamp: time.Now().Unix(),
+			}
+			if err := s.kafka.PublishPriceEvent(ctx, evt); err != nil {
+				log.Printf("PriceService: failed to publish Kafka event for %s: %v", symbol, err)
+			}
+		}
+
+		// Increment Prometheus metrics.
+		metrics.PriceUpdatesTotal.WithLabelValues(symbol, s.source).Inc()
 	}
 	return nil
 }
