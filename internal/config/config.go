@@ -13,17 +13,32 @@ import (
 var DefaultPriceSymbols = []string{"BTC", "ETH", "BNB", "SOL", "USDT", "USDC", "ADA", "DOGE"}
 
 type Config struct {
-	Port                   string
-	MasterDatabaseURL      string
-	SlaveDatabaseURL       string
-	EthereumNodeURL        string
-	JWTSecret              string
-	JWTExpiryHours         int
-	PriceSymbols           []string
-	PriceSyncIntervalS     int // seconds between price sync runs (default 60)
-	EncryptionKey          string // 32-byte hex for AES-256-GCM (64 hex chars)
-	ExchangeSyncIntervalS  int // seconds between exchange balance sync (default 300)
-	DefiSyncIntervalS      int // seconds between DeFi position sync (default 900)
+	Port                  string
+	MasterDatabaseURL     string
+	SlaveDatabaseURL      string
+	EthereumNodeURL       string
+	JWTSecret             string
+	JWTExpiryHours        int
+	PriceSymbols          []string
+	PriceSyncIntervalS    int    // seconds between price sync runs (default 60)
+	EncryptionKey         string // 32-byte hex for AES-256-GCM (64 hex chars)
+	ExchangeSyncIntervalS int    // seconds between exchange balance sync (default 300)
+	DefiSyncIntervalS     int    // seconds between DeFi position sync (default 900)
+
+	// Redis
+	RedisHost     string
+	RedisPort     string
+	RedisPassword string
+	RedisDB       int
+
+	// Kafka
+	KafkaBroker        string
+	KafkaTopicPrices   string
+	KafkaTopicEvents   string
+	KafkaConsumerGroup string
+
+	// Prometheus
+	PrometheusEnabled bool
 }
 
 func Load() (*Config, error) {
@@ -77,6 +92,14 @@ func Load() (*Config, error) {
 		}
 	}
 
+	// Redis
+	redisDB := 0
+	if v := os.Getenv("REDIS_DB"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			redisDB = n
+		}
+	}
+
 	return &Config{
 		Port:                  port,
 		MasterDatabaseURL:     os.Getenv("MASTER_DATABASE_URL"),
@@ -89,5 +112,32 @@ func Load() (*Config, error) {
 		EncryptionKey:         os.Getenv("ENCRYPTION_KEY"),
 		ExchangeSyncIntervalS: exchangeSyncIntervalS,
 		DefiSyncIntervalS:     defiSyncIntervalS,
+
+		RedisHost:     getEnv("REDIS_HOST", "localhost"),
+		RedisPort:     getEnv("REDIS_PORT", "6379"),
+		RedisPassword: os.Getenv("REDIS_PASSWORD"),
+		RedisDB:       redisDB,
+
+		KafkaBroker:        getEnv("KAFKA_BROKER", "localhost:9092"),
+		KafkaTopicPrices:   getEnv("KAFKA_TOPIC_PRICES", "price-events"),
+		KafkaTopicEvents:   getEnv("KAFKA_TOPIC_EVENTS", "app-events"),
+		KafkaConsumerGroup: getEnv("KAFKA_CONSUMER_GROUP", "crypto-tracker"),
+
+		PrometheusEnabled: getEnvAsBool("PROMETHEUS_ENABLED", true),
 	}, nil
+}
+
+func getEnv(key, defaultVal string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return defaultVal
+}
+
+func getEnvAsBool(key string, defaultVal bool) bool {
+	val := os.Getenv(key)
+	if val == "" {
+		return defaultVal
+	}
+	return strings.ToLower(val) == "true" || val == "1"
 }
