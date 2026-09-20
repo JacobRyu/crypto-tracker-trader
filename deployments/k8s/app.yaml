@@ -62,9 +62,25 @@ spec:
                   name: app-config
                   key: DEFI_SYNC_INTERVAL_S
             - name: REDIS_HOST
-              value: "redis"
+              valueFrom:
+                configMapKeyRef:
+                  name: redis-config
+                  key: REDIS_HOST
             - name: REDIS_PORT
-              value: "6379"
+              valueFrom:
+                configMapKeyRef:
+                  name: redis-config
+                  key: REDIS_PORT
+            - name: KAFKA_BROKER
+              valueFrom:
+                configMapKeyRef:
+                  name: kafka-config
+                  key: KAFKA_BROKER
+            - name: KAFKA_TOPIC_PRICES
+              valueFrom:
+                configMapKeyRef:
+                  name: kafka-config
+                  key: KAFKA_TOPIC_PRICES
           readinessProbe:
             httpGet:
               path: /health
