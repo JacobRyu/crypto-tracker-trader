@@ -59,7 +59,10 @@ func Init(ctx context.Context, cfg Config) (func(context.Context) error, error) 
 	))
 
 	shutdown := func(ctx context.Context) error {
-		return tp.Shutdown(ctx)
+		if err := tp.Shutdown(ctx); err != nil {
+			return err
+		}
+		return conn.Close()
 	}
 
 	return shutdown, nil
