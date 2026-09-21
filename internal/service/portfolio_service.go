@@ -18,6 +18,6 @@ func NewPortfolioService(portfolioStore store.PortfolioStoreInterface) Portfolio
 	}
 }
 
-func (s *PortfolioService) GetPortfolioHistory() ([]model.PortfolioSnapshot, error) {
-	return s.portfolioStore.GetHistory(context.Background())
+func (s *PortfolioService) GetPortfolioHistory(ctx context.Context) ([]model.PortfolioSnapshot, error) {
+	return s.portfolioStore.GetHistory(ctx)
 }

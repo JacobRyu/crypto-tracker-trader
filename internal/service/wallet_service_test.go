@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -23,7 +24,7 @@ func TestWalletService_AddWallet(t *testing.T) {
 		ms := new(storemod.MockWalletStore)
 		ms.On("CreateWallet", mock.Anything, mock.AnythingOfType("*model.UserWallet")).Return(nil)
 		svc := newWalletService(ms)
-		wallet, err := svc.AddWallet(1, "ethereum", "0xABC", "main")
+		wallet, err := svc.AddWallet(context.Background(), 1, "ethereum", "0xABC", "main")
 		require.NoError(t, err)
 		assert.Equal(t, "ethereum", wallet.Chain)
 		assert.Equal(t, "0xABC", wallet.Address)
@@ -33,7 +34,7 @@ func TestWalletService_AddWallet(t *testing.T) {
 	t.Run("unsupported chain returns error without DB call", func(t *testing.T) {
 		ms := new(storemod.MockWalletStore)
 		svc := newWalletService(ms)
-		_, err := svc.AddWallet(1, "unknown-chain", "0xABC", "")
+		_, err := svc.AddWallet(context.Background(), 1, "unknown-chain", "0xABC", "")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "unsupported chain")
 		ms.AssertNotCalled(t, "CreateWallet")
@@ -42,7 +43,7 @@ func TestWalletService_AddWallet(t *testing.T) {
 	t.Run("empty address returns error without DB call", func(t *testing.T) {
 		ms := new(storemod.MockWalletStore)
 		svc := newWalletService(ms)
-		_, err := svc.AddWallet(1, "ethereum", "", "")
+		_, err := svc.AddWallet(context.Background(), 1, "ethereum", "", "")
 		assert.Error(t, err)
 		ms.AssertNotCalled(t, "CreateWallet")
 	})
@@ -52,7 +53,7 @@ func TestWalletService_AddWallet(t *testing.T) {
 		ms.On("CreateWallet", mock.Anything, mock.AnythingOfType("*model.UserWallet")).
 			Return(errors.New("unique constraint violation"))
 		svc := newWalletService(ms)
-		_, err := svc.AddWallet(1, "ethereum", "0xDUP", "")
+		_, err := svc.AddWallet(context.Background(), 1, "ethereum", "0xDUP", "")
 		assert.ErrorContains(t, err, "already registered")
 	})
 
@@ -60,7 +61,7 @@ func TestWalletService_AddWallet(t *testing.T) {
 		ms := new(storemod.MockWalletStore)
 		ms.On("CreateWallet", mock.Anything, mock.AnythingOfType("*model.UserWallet")).Return(nil)
 		svc := newWalletService(ms)
-		wallet, err := svc.AddWallet(1, "ETHEREUM", "0xABC", "")
+		wallet, err := svc.AddWallet(context.Background(), 1, "ETHEREUM", "0xABC", "")
 		require.NoError(t, err)
 		assert.Equal(t, "ethereum", wallet.Chain)
 	})
@@ -72,7 +73,7 @@ func TestWalletService_GetWallets(t *testing.T) {
 		expected := []model.UserWallet{{ID: 1, UserID: 5, Chain: "ethereum"}}
 		ms.On("GetWalletsByUserID", mock.Anything, uint64(5)).Return(expected, nil)
 		svc := newWalletService(ms)
-		wallets, err := svc.GetWallets(5)
+		wallets, err := svc.GetWallets(context.Background(), 5)
 		require.NoError(t, err)
 		assert.Len(t, wallets, 1)
 	})
@@ -81,7 +82,7 @@ func TestWalletService_GetWallets(t *testing.T) {
 		ms := new(storemod.MockWalletStore)
 		ms.On("GetWalletsByUserID", mock.Anything, uint64(9)).Return(nil, nil)
 		svc := newWalletService(ms)
-		wallets, err := svc.GetWallets(9)
+		wallets, err := svc.GetWallets(context.Background(), 9)
 		require.NoError(t, err)
 		assert.Empty(t, wallets)
 		assert.NotNil(t, wallets)
@@ -93,14 +94,14 @@ func TestWalletService_DeleteWallet(t *testing.T) {
 		ms := new(storemod.MockWalletStore)
 		ms.On("DeleteWallet", mock.Anything, uint64(3), uint64(1)).Return(nil)
 		svc := newWalletService(ms)
-		assert.NoError(t, svc.DeleteWallet(3, 1))
+		assert.NoError(t, svc.DeleteWallet(context.Background(), 3, 1))
 	})
 
 	t.Run("not found propagates ErrNotFound", func(t *testing.T) {
 		ms := new(storemod.MockWalletStore)
 		ms.On("DeleteWallet", mock.Anything, uint64(99), uint64(1)).Return(store.ErrNotFound)
 		svc := newWalletService(ms)
-		err := svc.DeleteWallet(99, 1)
+		err := svc.DeleteWallet(context.Background(), 99, 1)
 		assert.ErrorIs(t, err, store.ErrNotFound)
 	})
 }
@@ -113,7 +114,7 @@ func TestWalletService_GetWalletAssets(t *testing.T) {
 		ms.On("GetWalletByID", mock.Anything, uint64(2)).Return(wallet, nil)
 		ms.On("GetAssetsByWalletID", mock.Anything, uint64(2)).Return(assets, nil)
 		svc := newWalletService(ms)
-		result, err := svc.GetWalletAssets(2, 1)
+		result, err := svc.GetWalletAssets(context.Background(), 2, 1)
 		require.NoError(t, err)
 		assert.Len(t, result, 1)
 		assert.Equal(t, "ETH", result[0].Symbol)
@@ -124,7 +125,7 @@ func TestWalletService_GetWalletAssets(t *testing.T) {
 		wallet := &model.UserWallet{ID: 2, UserID: 99}
 		ms.On("GetWalletByID", mock.Anything, uint64(2)).Return(wallet, nil)
 		svc := newWalletService(ms)
-		_, err := svc.GetWalletAssets(2, 1)
+		_, err := svc.GetWalletAssets(context.Background(), 2, 1)
 		assert.ErrorIs(t, err, store.ErrNotFound)
 		ms.AssertNotCalled(t, "GetAssetsByWalletID")
 	})
@@ -135,7 +136,7 @@ func TestWalletService_GetWalletAssets(t *testing.T) {
 		ms.On("GetWalletByID", mock.Anything, uint64(2)).Return(wallet, nil)
 		ms.On("GetAssetsByWalletID", mock.Anything, uint64(2)).Return(nil, nil)
 		svc := newWalletService(ms)
-		result, err := svc.GetWalletAssets(2, 1)
+		result, err := svc.GetWalletAssets(context.Background(), 2, 1)
 		require.NoError(t, err)
 		assert.Empty(t, result)
 		assert.NotNil(t, result)

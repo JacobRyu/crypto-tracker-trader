@@ -37,8 +37,8 @@ type MockPortfolioManager struct {
 	mock.Mock
 }
 
-func (m *MockPortfolioManager) GetPortfolioHistory() ([]model.PortfolioSnapshot, error) {
-	args := m.Called()
+func (m *MockPortfolioManager) GetPortfolioHistory(ctx context.Context) ([]model.PortfolioSnapshot, error) {
+	args := m.Called(ctx)
 	return args.Get(0).([]model.PortfolioSnapshot), args.Error(1)
 }
 
@@ -47,18 +47,18 @@ type MockUserManager struct {
 	mock.Mock
 }
 
-func (m *MockUserManager) RegisterUser(username, email, password string) (*model.User, error) {
-	args := m.Called(username, email, password)
+func (m *MockUserManager) RegisterUser(ctx context.Context, username, email, password string) (*model.User, error) {
+	args := m.Called(ctx, username, email, password)
 	return args.Get(0).(*model.User), args.Error(1)
 }
 
-func (m *MockUserManager) LoginUser(email, password string) (*model.User, error) {
-	args := m.Called(email, password)
+func (m *MockUserManager) LoginUser(ctx context.Context, email, password string) (*model.User, error) {
+	args := m.Called(ctx, email, password)
 	return args.Get(0).(*model.User), args.Error(1)
 }
 
-func (m *MockUserManager) GetUserByID(userID uint64) (*model.User, error) {
-	args := m.Called(userID)
+func (m *MockUserManager) GetUserByID(ctx context.Context, userID uint64) (*model.User, error) {
+	args := m.Called(ctx, userID)
 	return args.Get(0).(*model.User), args.Error(1)
 }
 
@@ -67,29 +67,29 @@ type MockWalletManager struct {
 	mock.Mock
 }
 
-func (m *MockWalletManager) AddWallet(userID uint64, chain, address, label string) (*model.UserWallet, error) {
-	args := m.Called(userID, chain, address, label)
+func (m *MockWalletManager) AddWallet(ctx context.Context, userID uint64, chain, address, label string) (*model.UserWallet, error) {
+	args := m.Called(ctx, userID, chain, address, label)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*model.UserWallet), args.Error(1)
 }
 
-func (m *MockWalletManager) GetWallets(userID uint64) ([]model.UserWallet, error) {
-	args := m.Called(userID)
+func (m *MockWalletManager) GetWallets(ctx context.Context, userID uint64) ([]model.UserWallet, error) {
+	args := m.Called(ctx, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]model.UserWallet), args.Error(1)
 }
 
-func (m *MockWalletManager) DeleteWallet(walletID, userID uint64) error {
-	args := m.Called(walletID, userID)
+func (m *MockWalletManager) DeleteWallet(ctx context.Context, walletID, userID uint64) error {
+	args := m.Called(ctx, walletID, userID)
 	return args.Error(0)
 }
 
-func (m *MockWalletManager) GetWalletAssets(walletID, userID uint64) ([]model.UserAsset, error) {
-	args := m.Called(walletID, userID)
+func (m *MockWalletManager) GetWalletAssets(ctx context.Context, walletID, userID uint64) ([]model.UserAsset, error) {
+	args := m.Called(ctx, walletID, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -232,7 +232,7 @@ func TestGetPortfolioHistory(t *testing.T) {
 		},
 		TotalValue: "50000",
 	}
-	mockPortfolioManager.On("GetPortfolioHistory").Return([]model.PortfolioSnapshot{snapshot}, nil)
+	mockPortfolioManager.On("GetPortfolioHistory", mock.Anything).Return([]model.PortfolioSnapshot{snapshot}, nil)
 
 	// Portfolio history now requires auth — provide a valid token.
 	token := mustGenerateToken(t, 1, testJWTSecret)
@@ -264,7 +264,7 @@ func TestGetPortfolioHistory(t *testing.T) {
 	mockPM2 := new(MockPortfolioManager)
 	apiHandler3, _ := newTestAPI(mockPM2, new(MockBlockchainDataFetcher), new(MockUserManager))
 	apiHandler3.RegisterRoutes(rError)
-	mockPM2.On("GetPortfolioHistory").Return([]model.PortfolioSnapshot{}, errors.New("failed to fetch history"))
+	mockPM2.On("GetPortfolioHistory", mock.Anything).Return([]model.PortfolioSnapshot{}, errors.New("failed to fetch history"))
 	token3 := mustGenerateToken(t, 1, testJWTSecret)
 	req3, _ := http.NewRequest(http.MethodGet, "/api/v1/portfolio/history", nil)
 	req3.Header.Set("Authorization", "Bearer "+token3)
@@ -343,7 +343,7 @@ func TestUserRegistration(t *testing.T) {
 	t.Run("successful_registration", func(t *testing.T) {
 		r, mockUM := setup()
 		testUser := &model.User{ID: 1, Username: "testuser", Email: "test@example.com"}
-		mockUM.On("RegisterUser", "testuser", "test@example.com", "password123").Return(testUser, nil).Once()
+		mockUM.On("RegisterUser", mock.Anything, "testuser", "test@example.com", "password123").Return(testUser, nil).Once()
 
 		body, _ := json.Marshal(gin.H{"username": "testuser", "email": "test@example.com", "password": "password123"})
 		req, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewBuffer(body))
@@ -387,7 +387,7 @@ func TestUserLogin(t *testing.T) {
 	t.Run("successful_login", func(t *testing.T) {
 		r, mockUM := setup()
 		testUser := &model.User{ID: 1, Username: "testuser", Email: "test@example.com"}
-		mockUM.On("LoginUser", "test@example.com", "password123").Return(testUser, nil).Once()
+		mockUM.On("LoginUser", mock.Anything, "test@example.com", "password123").Return(testUser, nil).Once()
 
 		body, _ := json.Marshal(gin.H{"email": "test@example.com", "password": "password123"})
 		req, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewBuffer(body))
@@ -405,7 +405,7 @@ func TestUserLogin(t *testing.T) {
 
 	t.Run("incorrect_credentials", func(t *testing.T) {
 		r, mockUM := setup()
-		mockUM.On("LoginUser", "wrong@example.com", "wrongpass").
+		mockUM.On("LoginUser", mock.Anything, "wrong@example.com", "wrongpass").
 			Return((*model.User)(nil), errors.New("invalid credentials")).Once()
 
 		body, _ := json.Marshal(gin.H{"email": "wrong@example.com", "password": "wrongpass"})

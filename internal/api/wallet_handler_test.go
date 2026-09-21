@@ -13,6 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 // walletSetup creates a router with auth middleware and wallet routes using mock services.
@@ -55,7 +56,7 @@ func TestAddWallet(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		r, wm, token := walletSetup(t)
 		wallet := &model.UserWallet{ID: 1, UserID: 1, Chain: "ethereum", Address: "0xABC", Label: "main"}
-		wm.On("AddWallet", uint64(1), "ethereum", "0xABC", "main").Return(wallet, nil)
+		wm.On("AddWallet", mock.Anything, uint64(1), "ethereum", "0xABC", "main").Return(wallet, nil)
 
 		body, _ := json.Marshal(gin.H{"chain": "ethereum", "address": "0xABC", "label": "main"})
 		w := httptest.NewRecorder()
@@ -78,7 +79,7 @@ func TestAddWallet(t *testing.T) {
 
 	t.Run("duplicate address returns 409", func(t *testing.T) {
 		r, wm, token := walletSetup(t)
-		wm.On("AddWallet", uint64(1), "ethereum", "0xDUP", "").
+		wm.On("AddWallet", mock.Anything, uint64(1), "ethereum", "0xDUP", "").
 			Return(nil, errors.New("wallet address already registered for this chain"))
 
 		body, _ := json.Marshal(gin.H{"chain": "ethereum", "address": "0xDUP"})
@@ -103,7 +104,7 @@ func TestListWallets(t *testing.T) {
 	t.Run("success returns wallets", func(t *testing.T) {
 		r, wm, token := walletSetup(t)
 		wallets := []model.UserWallet{{ID: 1, Chain: "ethereum", Address: "0xABC"}}
-		wm.On("GetWallets", uint64(1)).Return(wallets, nil)
+		wm.On("GetWallets", mock.Anything, uint64(1)).Return(wallets, nil)
 
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, authReq(http.MethodGet, "/api/v1/wallets", nil, token))
@@ -116,7 +117,7 @@ func TestListWallets(t *testing.T) {
 
 	t.Run("service error returns 500", func(t *testing.T) {
 		r, wm, token := walletSetup(t)
-		wm.On("GetWallets", uint64(1)).Return(nil, errors.New("db error"))
+		wm.On("GetWallets", mock.Anything, uint64(1)).Return(nil, errors.New("db error"))
 
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, authReq(http.MethodGet, "/api/v1/wallets", nil, token))
@@ -128,7 +129,7 @@ func TestListWallets(t *testing.T) {
 func TestDeleteWallet(t *testing.T) {
 	t.Run("success returns 204", func(t *testing.T) {
 		r, wm, token := walletSetup(t)
-		wm.On("DeleteWallet", uint64(5), uint64(1)).Return(nil)
+		wm.On("DeleteWallet", mock.Anything, uint64(5), uint64(1)).Return(nil)
 
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, authReq(http.MethodDelete, "/api/v1/wallets/5", nil, token))
@@ -139,7 +140,7 @@ func TestDeleteWallet(t *testing.T) {
 
 	t.Run("not found returns 404", func(t *testing.T) {
 		r, wm, token := walletSetup(t)
-		wm.On("DeleteWallet", uint64(99), uint64(1)).Return(store.ErrNotFound)
+		wm.On("DeleteWallet", mock.Anything, uint64(99), uint64(1)).Return(store.ErrNotFound)
 
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, authReq(http.MethodDelete, "/api/v1/wallets/99", nil, token))
@@ -159,7 +160,7 @@ func TestListWalletAssets(t *testing.T) {
 	t.Run("success returns assets", func(t *testing.T) {
 		r, wm, token := walletSetup(t)
 		assets := []model.UserAsset{{ID: 1, WalletID: 2, Symbol: "ETH", Balance: "1000000000000000000"}}
-		wm.On("GetWalletAssets", uint64(2), uint64(1)).Return(assets, nil)
+		wm.On("GetWalletAssets", mock.Anything, uint64(2), uint64(1)).Return(assets, nil)
 
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, authReq(http.MethodGet, "/api/v1/wallets/2/assets", nil, token))
@@ -173,7 +174,7 @@ func TestListWalletAssets(t *testing.T) {
 
 	t.Run("wallet not found returns 404", func(t *testing.T) {
 		r, wm, token := walletSetup(t)
-		wm.On("GetWalletAssets", uint64(99), uint64(1)).Return(nil, store.ErrNotFound)
+		wm.On("GetWalletAssets", mock.Anything, uint64(99), uint64(1)).Return(nil, store.ErrNotFound)
 
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, authReq(http.MethodGet, "/api/v1/wallets/99/assets", nil, token))

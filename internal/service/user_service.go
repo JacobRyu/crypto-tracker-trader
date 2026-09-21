@@ -30,8 +30,7 @@ func NewUserService(us UserStoreInterface) *UserService {
 }
 
 // RegisterUser registers a new user.
-func (s *UserService) RegisterUser(username, email, password string) (*model.User, error) {
-	ctx := context.Background()
+func (s *UserService) RegisterUser(ctx context.Context, username, email, password string) (*model.User, error) {
 	// Check if user already exists
 	existingUser, _, err := s.userStore.GetUserByUsername(ctx, username)
 	if err != nil {
@@ -80,8 +79,7 @@ func (s *UserService) RegisterUser(username, email, password string) (*model.Use
 }
 
 // LoginUser authenticates a user.
-func (s *UserService) LoginUser(email, password string) (*model.User, error) {
-	ctx := context.Background()
+func (s *UserService) LoginUser(ctx context.Context, email, password string) (*model.User, error) {
 	user, credential, err := s.userStore.GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve user: %w", err)
@@ -99,8 +97,7 @@ func (s *UserService) LoginUser(email, password string) (*model.User, error) {
 }
 
 // GetUserByID retrieves a user by their ID.
-func (s *UserService) GetUserByID(userID uint64) (*model.User, error) {
-	ctx := context.Background()
+func (s *UserService) GetUserByID(ctx context.Context, userID uint64) (*model.User, error) {
 	user, _, err := s.userStore.GetUserByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve user by ID: %w", err)

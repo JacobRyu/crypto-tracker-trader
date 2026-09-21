@@ -40,7 +40,7 @@ func (a *API) SyncDefiPositions(c *gin.Context) {
 	}
 
 	// Verify wallet ownership via wallet service
-	wallets, err := a.walletService.GetWallets(userID)
+	wallets, err := a.walletService.GetWallets(c.Request.Context(), userID)
 	if err != nil {
 		log.Printf("SyncDefiPositions: getting wallets: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to verify wallet ownership"})

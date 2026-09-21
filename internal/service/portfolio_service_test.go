@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -28,7 +29,7 @@ func TestPortfolioService(t *testing.T) {
 	mockStore.On("GetHistory", mock.Anything).Return(snapshots, nil)
 
 	// Test GetPortfolioHistory
-	history, err := portfolioService.GetPortfolioHistory()
+	history, err := portfolioService.GetPortfolioHistory(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, history, 1)
 	assert.Equal(t, snapshot.TotalValue, history[0].TotalValue)

@@ -72,7 +72,7 @@ func (a *API) RegisterUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	user, err := a.userService.RegisterUser(req.Username, req.Email, req.Password)
+	user, err := a.userService.RegisterUser(c.Request.Context(), req.Username, req.Email, req.Password)
 	if err != nil {
 		if err.Error() == "username already taken" || err.Error() == "email already taken" {
 			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
@@ -106,7 +106,7 @@ func (a *API) LoginUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	user, err := a.userService.LoginUser(req.Email, req.Password)
+	user, err := a.userService.LoginUser(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
 		if err.Error() == "invalid credentials" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
@@ -147,7 +147,7 @@ func (a *API) FetchETHBalanceAndSave(c *gin.Context) {
 }
 
 func (a *API) GetPortfolioHistory(c *gin.Context) {
-	history, err := a.portfolioService.GetPortfolioHistory()
+	history, err := a.portfolioService.GetPortfolioHistory(c.Request.Context())
 	if err != nil {
 		log.Printf("Error getting portfolio history: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "An internal server error occurred"})

@@ -21,7 +21,7 @@ func (a *API) ListWallets(c *gin.Context) {
 		return
 	}
 
-	wallets, err := a.walletService.GetWallets(userID)
+	wallets, err := a.walletService.GetWallets(c.Request.Context(), userID)
 	if err != nil {
 		log.Printf("Error listing wallets for user %d: %v", userID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve wallets"})
@@ -48,7 +48,7 @@ func (a *API) AddWallet(c *gin.Context) {
 		return
 	}
 
-	wallet, err := a.walletService.AddWallet(userID, req.Chain, req.Address, req.Label)
+	wallet, err := a.walletService.AddWallet(c.Request.Context(), userID, req.Chain, req.Address, req.Label)
 	if err != nil {
 		msg := err.Error()
 		if strings.Contains(msg, "already registered") || strings.Contains(msg, "unsupported chain") {
@@ -76,7 +76,7 @@ func (a *API) DeleteWallet(c *gin.Context) {
 		return
 	}
 
-	if err := a.walletService.DeleteWallet(walletID, userID); err != nil {
+	if err := a.walletService.DeleteWallet(c.Request.Context(), walletID, userID); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "wallet not found"})
 			return
@@ -102,7 +102,7 @@ func (a *API) ListWalletAssets(c *gin.Context) {
 		return
 	}
 
-	assets, err := a.walletService.GetWalletAssets(walletID, userID)
+	assets, err := a.walletService.GetWalletAssets(c.Request.Context(), walletID, userID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "wallet not found"})

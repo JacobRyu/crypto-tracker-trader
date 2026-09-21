@@ -32,22 +32,22 @@ type BlockchainDataFetcher interface {
 
 // PortfolioManager defines the interface for portfolio operations.
 type PortfolioManager interface {
-	GetPortfolioHistory() ([]model.PortfolioSnapshot, error)
+	GetPortfolioHistory(ctx context.Context) ([]model.PortfolioSnapshot, error)
 }
 
 // UserManager defines the interface for user management operations.
 type UserManager interface {
-	RegisterUser(username, email, password string) (*model.User, error)
-	LoginUser(email, password string) (*model.User, error)
-	GetUserByID(userID uint64) (*model.User, error)
+	RegisterUser(ctx context.Context, username, email, password string) (*model.User, error)
+	LoginUser(ctx context.Context, email, password string) (*model.User, error)
+	GetUserByID(ctx context.Context, userID uint64) (*model.User, error)
 }
 
 // WalletManager defines the interface for wallet management operations.
 type WalletManager interface {
-	AddWallet(userID uint64, chain, address, label string) (*model.UserWallet, error)
-	GetWallets(userID uint64) ([]model.UserWallet, error)
-	DeleteWallet(walletID, userID uint64) error
-	GetWalletAssets(walletID, userID uint64) ([]model.UserAsset, error)
+	AddWallet(ctx context.Context, userID uint64, chain, address, label string) (*model.UserWallet, error)
+	GetWallets(ctx context.Context, userID uint64) ([]model.UserWallet, error)
+	DeleteWallet(ctx context.Context, walletID, userID uint64) error
+	GetWalletAssets(ctx context.Context, walletID, userID uint64) ([]model.UserAsset, error)
 }
 
 // PriceFetcher is the interface for external price data providers.

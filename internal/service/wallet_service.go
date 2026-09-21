@@ -30,8 +30,7 @@ func NewWalletService(ws store.WalletStoreInterface) *WalletService {
 }
 
 // AddWallet validates and registers a new wallet for the given user.
-func (s *WalletService) AddWallet(userID uint64, chain, address, label string) (*model.UserWallet, error) {
-	ctx := context.Background()
+func (s *WalletService) AddWallet(ctx context.Context, userID uint64, chain, address, label string) (*model.UserWallet, error) {
 	chain = strings.ToLower(strings.TrimSpace(chain))
 	address = strings.TrimSpace(address)
 
@@ -59,8 +58,7 @@ func (s *WalletService) AddWallet(userID uint64, chain, address, label string) (
 }
 
 // GetWallets returns all wallets for the given user.
-func (s *WalletService) GetWallets(userID uint64) ([]model.UserWallet, error) {
-	ctx := context.Background()
+func (s *WalletService) GetWallets(ctx context.Context, userID uint64) ([]model.UserWallet, error) {
 	wallets, err := s.walletStore.GetWalletsByUserID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("get wallets: %w", err)
@@ -72,8 +70,7 @@ func (s *WalletService) GetWallets(userID uint64) ([]model.UserWallet, error) {
 }
 
 // DeleteWallet removes a wallet, verifying ownership via userID.
-func (s *WalletService) DeleteWallet(walletID, userID uint64) error {
-	ctx := context.Background()
+func (s *WalletService) DeleteWallet(ctx context.Context, walletID, userID uint64) error {
 	if err := s.walletStore.DeleteWallet(ctx, walletID, userID); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			return store.ErrNotFound
@@ -84,8 +81,7 @@ func (s *WalletService) DeleteWallet(walletID, userID uint64) error {
 }
 
 // GetWalletAssets returns assets for a wallet, verifying the wallet belongs to userID.
-func (s *WalletService) GetWalletAssets(walletID, userID uint64) ([]model.UserAsset, error) {
-	ctx := context.Background()
+func (s *WalletService) GetWalletAssets(ctx context.Context, walletID, userID uint64) ([]model.UserAsset, error) {
 	wallet, err := s.walletStore.GetWalletByID(ctx, walletID)
 	if err != nil {
 		return nil, fmt.Errorf("get wallet: %w", err)

@@ -64,7 +64,7 @@ func TestUserService_RegisterUser_Success(t *testing.T) {
 		authProviderArg.ID = 1
 	}).Once()
 
-	user, err := userService.RegisterUser(username, email, password)
+	user, err := userService.RegisterUser(context.Background(), username, email, password)
 	assert.NoError(t, err)
 	assert.NotNil(t, user)
 	assert.Equal(t, username, user.Username)
@@ -96,7 +96,7 @@ func TestUserService_RegisterUser_DuplicateUsername(t *testing.T) {
 	// Mock GetUserByUsername to return an existing user
 	mockUserStore.On("GetUserByUsername", mock.Anything, username).Return(&model.User{ID: 1, Username: username, Email: email}, &model.UserCredential{}, nil).Once()
 
-	user, err := userService.RegisterUser(username, email, password)
+	user, err := userService.RegisterUser(context.Background(), username, email, password)
 	assert.Error(t, err)
 	assert.Nil(t, user)
 	assert.Equal(t, "username already taken", err.Error())
@@ -120,7 +120,7 @@ func TestUserService_LoginUser_Success(t *testing.T) {
 		nil,
 	).Once()
 
-	user, err := userService.LoginUser(email, password)
+	user, err := userService.LoginUser(context.Background(), email, password)
 	assert.NoError(t, err)
 	assert.NotNil(t, user)
 	assert.Equal(t, email, user.Email)
@@ -145,7 +145,7 @@ func TestUserService_LoginUser_InvalidCredentials(t *testing.T) {
 		nil,
 	).Once()
 
-	user, err := userService.LoginUser(email, password)
+	user, err := userService.LoginUser(context.Background(), email, password)
 	assert.Error(t, err)
 	assert.Nil(t, user)
 	assert.Equal(t, "invalid credentials", err.Error())
@@ -163,7 +163,7 @@ func TestUserService_LoginUser_UserNotFound(t *testing.T) {
 	// Mock GetUserByEmail to return nil for user and credential
 	mockUserStore.On("GetUserByEmail", mock.Anything, email).Return((*model.User)(nil), (*model.UserCredential)(nil), nil).Once()
 
-	user, err := userService.LoginUser(email, password)
+	user, err := userService.LoginUser(context.Background(), email, password)
 	assert.Error(t, err)
 	assert.Nil(t, user)
 	assert.Equal(t, "invalid credentials", err.Error())
@@ -180,7 +180,7 @@ func TestUserService_GetUserByID_Success(t *testing.T) {
 
 	mockUserStore.On("GetUserByID", mock.Anything, userID).Return(expectedUser, &model.UserCredential{}, nil).Once()
 
-	user, err := userService.GetUserByID(userID)
+	user, err := userService.GetUserByID(context.Background(), userID)
 	assert.NoError(t, err)
 	assert.NotNil(t, user)
 	assert.Equal(t, expectedUser.ID, user.ID)
@@ -198,7 +198,7 @@ func TestUserService_GetUserByID_NotFound(t *testing.T) {
 
 	mockUserStore.On("GetUserByID", mock.Anything, userID).Return((*model.User)(nil), (*model.UserCredential)(nil), nil).Once()
 
-	user, err := userService.GetUserByID(userID)
+	user, err := userService.GetUserByID(context.Background(), userID)
 	assert.Error(t, err)
 	assert.Nil(t, user)
 	assert.Equal(t, "user not found", err.Error())
@@ -215,7 +215,7 @@ func TestUserService_GetUserByID_StoreError(t *testing.T) {
 
 	mockUserStore.On("GetUserByID", mock.Anything, userID).Return((*model.User)(nil), (*model.UserCredential)(nil), storeError).Once()
 
-	user, err := userService.GetUserByID(userID)
+	user, err := userService.GetUserByID(context.Background(), userID)
 	assert.Error(t, err)
 	assert.Nil(t, user)
 	assert.Contains(t, err.Error(), "failed to retrieve user by ID")
