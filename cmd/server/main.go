@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"os"
 	"time"
 
 	"crypto-tracker-trader/internal/api"
@@ -13,6 +14,7 @@ import (
 	"crypto-tracker-trader/internal/event"
 	"crypto-tracker-trader/internal/service"
 	"crypto-tracker-trader/internal/store"
+	"crypto-tracker-trader/internal/telemetry"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/gin-gonic/gin"
@@ -36,6 +38,20 @@ func main() {
 	}
 	if cfg.EncryptionKey == "" {
 		log.Fatal("ENCRYPTION_KEY environment variable is not set (must be 32-byte hex, 64 chars)")
+	}
+
+	// OpenTelemetry initialization.
+	ctx := context.Background()
+	shutdown, err := telemetry.Init(ctx, telemetry.Config{
+		Endpoint:    getEnv("OTEL_EXPORTER_OTLP_ENDPOINT", "otel-collector:4317"),
+		ServiceName: "crypto-tracker-trader",
+		Environment: getEnv("ENVIRONMENT", "development"),
+	})
+	if err != nil {
+		log.Printf("Warning: telemetry init failed: %v", err)
+	} else {
+		defer shutdown(ctx)
+		log.Println("OpenTelemetry initialized")
 	}
 
 	r := gin.Default()
@@ -125,4 +141,11 @@ func main() {
 	if err := r.Run(addr); err != nil {
 		log.Fatalf("server exited: %v", err)
 	}
+}
+
+func getEnv(key, defaultVal string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return defaultVal
 }
