@@ -11,10 +11,16 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
+var tracer = otel.Tracer("crypto-tracker-trader/coingecko")
+
 const (
-	defaultBaseURL    = "https://api.coingecko.com/api/v3"
+	defaultBaseURL     = "https://api.coingecko.com/api/v3"
 	defaultHTTPTimeout = 10 * time.Second
 	// CoinGecko free tier: 30 calls/min → burst of 1 call per 2s is safe.
 	minRequestInterval = 2 * time.Second
@@ -71,6 +77,13 @@ func NewWithBaseURL(baseURL string) *Client {
 // Symbols not present in the known mapping are silently skipped.
 // Rate-limiting: waits until minRequestInterval has elapsed since the last call.
 func (c *Client) FetchPrices(ctx context.Context, symbols []string) (map[string]string, error) {
+	ctx, span := tracer.Start(ctx, "coingecko.fetch_prices",
+		trace.WithAttributes(
+			attribute.StringSlice("coingecko.symbols", symbols),
+		),
+	)
+	defer span.End()
+
 	ids, symbolByID := buildIDParams(symbols)
 	if len(ids) == 0 {
 		return map[string]string{}, nil
@@ -114,6 +127,11 @@ func (c *Client) FetchPrices(ctx context.Context, symbols []string) (map[string]
 		}
 		result[symbol] = strconv.FormatFloat(usd["usd"], 'f', 8, 64)
 	}
+
+	span.SetAttributes(
+		attribute.Int("coingecko.prices_fetched", len(result)),
+	)
+
 	return result, nil
 }
 

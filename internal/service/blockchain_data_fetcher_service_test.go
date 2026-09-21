@@ -44,8 +44,8 @@ func TestBlockchainDataFetcherService_FetchAndSaveETHBalance(t *testing.T) {
 		expectedBlockNumber := big.NewInt(100)
 		expectedBalanceWei := big.NewInt(0).Mul(big.NewInt(10), big.NewInt(1e18)) // 10 ETH
 
-		mockEthClient.On("HeaderByNumber", ctx, mock.Anything).Return(&types.Header{Number: expectedBlockNumber}, nil).Once()
-		mockEthClient.On("BalanceAt", ctx, testAddress, expectedBlockNumber).Return(expectedBalanceWei, nil).Once()
+		mockEthClient.On("HeaderByNumber", mock.Anything, mock.Anything).Return(&types.Header{Number: expectedBlockNumber}, nil).Once()
+		mockEthClient.On("BalanceAt", mock.Anything, testAddress, expectedBlockNumber).Return(expectedBalanceWei, nil).Once()
 		mockPortfolioStore.On("AddSnapshot", mock.Anything, mock.AnythingOfType("model.PortfolioSnapshot")).Return(nil).Once()
 
 		err := service.FetchAndSaveETHBalance(ctx, testAddress)
@@ -58,7 +58,7 @@ func TestBlockchainDataFetcherService_FetchAndSaveETHBalance(t *testing.T) {
 	// Test case 2: Error getting latest block header
 	t.Run("error_get_header", func(t *testing.T) {
 		expectedError := errors.New("failed to get header")
-		mockEthClient.On("HeaderByNumber", ctx, mock.Anything).Return(&types.Header{}, expectedError).Once()
+		mockEthClient.On("HeaderByNumber", mock.Anything, mock.Anything).Return(&types.Header{}, expectedError).Once()
 
 		err := service.FetchAndSaveETHBalance(ctx, testAddress)
 		assert.Error(t, err)
@@ -72,8 +72,8 @@ func TestBlockchainDataFetcherService_FetchAndSaveETHBalance(t *testing.T) {
 	t.Run("error_get_balance", func(t *testing.T) {
 		expectedBlockNumber := big.NewInt(100)
 		expectedError := errors.New("failed to get balance")
-		mockEthClient.On("HeaderByNumber", ctx, mock.Anything).Return(&types.Header{Number: expectedBlockNumber}, nil).Once()
-		mockEthClient.On("BalanceAt", ctx, testAddress, expectedBlockNumber).Return(big.NewInt(0), expectedError).Once()
+		mockEthClient.On("HeaderByNumber", mock.Anything, mock.Anything).Return(&types.Header{Number: expectedBlockNumber}, nil).Once()
+		mockEthClient.On("BalanceAt", mock.Anything, testAddress, expectedBlockNumber).Return(big.NewInt(0), expectedError).Once()
 
 		err := service.FetchAndSaveETHBalance(ctx, testAddress)
 		assert.Error(t, err)
@@ -89,8 +89,8 @@ func TestBlockchainDataFetcherService_FetchAndSaveETHBalance(t *testing.T) {
 		expectedBalanceWei := big.NewInt(0).Mul(big.NewInt(10), big.NewInt(1e18)) // 10 ETH
 		expectedError := errors.New("failed to add snapshot")
 
-		mockEthClient.On("HeaderByNumber", ctx, mock.Anything).Return(&types.Header{Number: expectedBlockNumber}, nil).Once()
-		mockEthClient.On("BalanceAt", ctx, testAddress, expectedBlockNumber).Return(expectedBalanceWei, nil).Once()
+		mockEthClient.On("HeaderByNumber", mock.Anything, mock.Anything).Return(&types.Header{Number: expectedBlockNumber}, nil).Once()
+		mockEthClient.On("BalanceAt", mock.Anything, testAddress, expectedBlockNumber).Return(expectedBalanceWei, nil).Once()
 		mockPortfolioStore.On("AddSnapshot", mock.Anything, mock.AnythingOfType("model.PortfolioSnapshot")).Return(expectedError).Once()
 
 		err := service.FetchAndSaveETHBalance(ctx, testAddress)

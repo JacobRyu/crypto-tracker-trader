@@ -7,7 +7,11 @@ import (
 	"crypto-tracker-trader/internal/auth"
 
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
+
+var tracer = otel.Tracer("crypto-tracker-trader/auth")
 
 // UserIDKey is the key used to store the authenticated user ID in Gin's context.
 const UserIDKey = "userID"
@@ -16,6 +20,9 @@ const UserIDKey = "userID"
 // Requests without a valid token are rejected with 401 Unauthorized.
 func Auth(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx, span := tracer.Start(c.Request.Context(), "auth.validate_token")
+		defer span.End()
+
 		header := c.GetHeader("Authorization")
 		if header == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authorization header required"})
@@ -34,7 +41,13 @@ func Auth(jwtSecret string) gin.HandlerFunc {
 			return
 		}
 
+		span.SetAttributes(
+			attribute.Int64("user.id", int64(claims.UserID)),
+			attribute.String("jwt.algorithm", "HS256"),
+		)
+
 		c.Set(UserIDKey, claims.UserID)
+		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
 }

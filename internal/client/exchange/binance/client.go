@@ -11,7 +11,13 @@ import (
 	"time"
 
 	"crypto-tracker-trader/internal/client/exchange"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var tracer = otel.Tracer("crypto-tracker-trader/binance")
 
 const defaultBaseURL = "https://api.binance.com"
 
@@ -52,6 +58,13 @@ func (c *Client) sign(queryString string) string {
 
 // GetBalances fetches account balances, skipping dust (zero-balance) entries.
 func (c *Client) GetBalances(ctx context.Context) ([]exchange.Balance, error) {
+	ctx, span := tracer.Start(ctx, "binance.get_balances",
+		trace.WithAttributes(
+			attribute.String("exchange.name", "binance"),
+		),
+	)
+	defer span.End()
+
 	ts := strconv.FormatInt(time.Now().UnixMilli(), 10)
 	query := "timestamp=" + ts
 	sig := c.sign(query)
@@ -100,6 +113,11 @@ func (c *Client) GetBalances(ctx context.Context) ([]exchange.Balance, error) {
 			Locked: b.Locked,
 		})
 	}
+
+	span.SetAttributes(
+		attribute.Int("binance.balance_count", len(balances)),
+	)
+
 	return balances, nil
 }
 
@@ -133,12 +151,12 @@ func (c *Client) GetTradeHistory(ctx context.Context, symbol string, since time.
 	}
 
 	var raw []struct {
-		Symbol   string `json:"symbol"`
-		ID       int64  `json:"id"`
-		Price    string `json:"price"`
-		Qty      string `json:"qty"`
-		IsBuyer  bool   `json:"isBuyer"`
-		TradeTime int64 `json:"time"`
+		Symbol    string `json:"symbol"`
+		ID        int64  `json:"id"`
+		Price     string `json:"price"`
+		Qty       string `json:"qty"`
+		IsBuyer   bool   `json:"isBuyer"`
+		TradeTime int64  `json:"time"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
 		return nil, fmt.Errorf("binance: decoding trades: %w", err)

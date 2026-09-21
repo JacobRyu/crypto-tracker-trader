@@ -10,7 +10,12 @@ import (
 	"crypto-tracker-trader/internal/store"
 
 	"github.com/ethereum/go-ethereum/common"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var tracer = otel.Tracer("crypto-tracker-trader/blockchain")
 
 // BlockchainDataFetcherService implements the BlockchainDataFetcher interface.
 type BlockchainDataFetcherService struct {
@@ -28,6 +33,13 @@ func NewBlockchainDataFetcherService(ethClient EthClientInterface, portfolioStor
 
 // FetchAndSaveETHBalance fetches the ETH balance for a given address at the latest block and saves it to the portfolio store.
 func (s *BlockchainDataFetcherService) FetchAndSaveETHBalance(ctx context.Context, address common.Address) error {
+	ctx, span := tracer.Start(ctx, "blockchain.fetch_eth_balance",
+		trace.WithAttributes(
+			attribute.String("eth.address", address.Hex()),
+		),
+	)
+	defer span.End()
+
 	// Get the latest block number
 	header, err := s.ethClient.HeaderByNumber(ctx, nil)
 	if err != nil {
@@ -48,6 +60,11 @@ func (s *BlockchainDataFetcherService) FetchAndSaveETHBalance(ctx context.Contex
 	ethBalance := new(big.Float).SetInt(balance)
 	divisor := new(big.Float).SetInt(big.NewInt(1e18)) // 10^18
 	ethBalance = ethBalance.Quo(ethBalance, divisor)
+
+	span.SetAttributes(
+		attribute.Int64("eth.block_number", header.Number.Int64()),
+		attribute.String("eth.balance", ethBalance.String()),
+	)
 
 	// Create a portfolio snapshot
 	snapshot := model.PortfolioSnapshot{

@@ -11,7 +11,12 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var tracer = otel.Tracer("crypto-tracker-trader/uniswap")
 
 // mainnetNFPMAddr is the Uniswap V3 NonfungiblePositionManager on Ethereum mainnet.
 const mainnetNFPMAddr = "0xC36442b4a4522E871399CD717aBDD847Ab11FE88"
@@ -40,17 +45,26 @@ func NewWithAddress(eth EthCaller, nfpmAddr common.Address) *Client {
 func (c *Client) ProtocolName() string { return "uniswap-v3" }
 
 // ABI function selectors (keccak256(sig)[0:4]):
-//   balanceOf(address)              → 70a08231
-//   tokenOfOwnerByIndex(address,uint256) → 2f745c59
-//   positions(uint256)              → 99fbab88
+//
+//	balanceOf(address)              → 70a08231
+//	tokenOfOwnerByIndex(address,uint256) → 2f745c59
+//	positions(uint256)              → 99fbab88
 var (
-	selBalanceOf            = []byte{0x70, 0xa0, 0x82, 0x31}
-	selTokenOfOwnerByIndex  = []byte{0x2f, 0x74, 0x5c, 0x59}
-	selPositions            = []byte{0x99, 0xfb, 0xab, 0x88}
+	selBalanceOf           = []byte{0x70, 0xa0, 0x82, 0x31}
+	selTokenOfOwnerByIndex = []byte{0x2f, 0x74, 0x5c, 0x59}
+	selPositions           = []byte{0x99, 0xfb, 0xab, 0x88}
 )
 
 // GetPositions returns all Uniswap V3 LP positions owned by walletAddr.
 func (c *Client) GetPositions(ctx context.Context, walletAddr common.Address) ([]defi.Position, error) {
+	ctx, span := tracer.Start(ctx, "uniswap.get_positions",
+		trace.WithAttributes(
+			attribute.String("defi.protocol", "uniswap-v3"),
+			attribute.String("wallet.address", walletAddr.Hex()),
+		),
+	)
+	defer span.End()
+
 	balance, err := c.balanceOf(ctx, walletAddr)
 	if err != nil {
 		return nil, fmt.Errorf("uniswap: balanceOf: %w", err)
@@ -83,20 +97,25 @@ func (c *Client) GetPositions(ctx context.Context, walletAddr common.Address) ([
 			UpdatedAt:    time.Now(),
 		})
 	}
+
+	span.SetAttributes(
+		attribute.Int("defi.position_count", len(positions)),
+	)
+
 	return positions, nil
 }
 
 // UniswapPosition holds the decoded data from the positions() call.
 type UniswapPosition struct {
-	TokenID    string `json:"token_id"`
-	Token0     string `json:"token0"`
-	Token1     string `json:"token1"`
-	Fee        uint64 `json:"fee"`
-	TickLower  int64  `json:"tick_lower"`
-	TickUpper  int64  `json:"tick_upper"`
-	Liquidity  string `json:"liquidity"`
-	Owed0      string `json:"tokens_owed0"`
-	Owed1      string `json:"tokens_owed1"`
+	TokenID   string `json:"token_id"`
+	Token0    string `json:"token0"`
+	Token1    string `json:"token1"`
+	Fee       uint64 `json:"fee"`
+	TickLower int64  `json:"tick_lower"`
+	TickUpper int64  `json:"tick_upper"`
+	Liquidity string `json:"liquidity"`
+	Owed0     string `json:"tokens_owed0"`
+	Owed1     string `json:"tokens_owed1"`
 }
 
 // balanceOf calls ERC-721 balanceOf on the NFPM.
