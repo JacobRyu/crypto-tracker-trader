@@ -22,8 +22,8 @@ func NewPriceStore(db *pgxpool.Pool) *PriceStore {
 }
 
 // SavePrice inserts a new price record for the given symbol.
-func (s *PriceStore) SavePrice(symbol, priceUSD, source string) error {
-	_, err := s.db.Exec(context.Background(),
+func (s *PriceStore) SavePrice(ctx context.Context, symbol, priceUSD, source string) error {
+	_, err := s.db.Exec(ctx,
 		`INSERT INTO asset_prices (symbol, price_usd, source) VALUES ($1, $2, $3)`,
 		strings.ToUpper(symbol), priceUSD, source,
 	)
@@ -35,9 +35,9 @@ func (s *PriceStore) SavePrice(symbol, priceUSD, source string) error {
 
 // GetLatestPrice returns the most recently saved price for the given symbol.
 // Returns ErrNotFound if no price record exists.
-func (s *PriceStore) GetLatestPrice(symbol string) (*model.AssetPrice, error) {
+func (s *PriceStore) GetLatestPrice(ctx context.Context, symbol string) (*model.AssetPrice, error) {
 	var p model.AssetPrice
-	err := s.db.QueryRow(context.Background(),
+	err := s.db.QueryRow(ctx,
 		`SELECT id, symbol, price_usd, source, fetched_at
 		 FROM asset_prices
 		 WHERE symbol = $1
@@ -56,11 +56,11 @@ func (s *PriceStore) GetLatestPrice(symbol string) (*model.AssetPrice, error) {
 
 // GetPriceHistory returns the last `limit` price records for the given symbol,
 // newest first.
-func (s *PriceStore) GetPriceHistory(symbol string, limit int) ([]model.AssetPrice, error) {
+func (s *PriceStore) GetPriceHistory(ctx context.Context, symbol string, limit int) ([]model.AssetPrice, error) {
 	if limit <= 0 {
 		limit = 100
 	}
-	rows, err := s.db.Query(context.Background(),
+	rows, err := s.db.Query(ctx,
 		`SELECT id, symbol, price_usd, source, fetched_at
 		 FROM asset_prices
 		 WHERE symbol = $1

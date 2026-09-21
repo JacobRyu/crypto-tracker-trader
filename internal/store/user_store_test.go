@@ -99,14 +99,14 @@ func TestUserStore_CreateUser(t *testing.T) {
 		ProviderUserID: "testuser_id",
 	}
 
-	err := store.CreateUser(user, credential, authProvider)
+	err := store.CreateUser(context.Background(), user, credential, authProvider)
 	assert.NoError(t, err)
 	assert.NotZero(t, user.ID)         // User ID should be set after creation
 	assert.NotZero(t, credential.ID)   // Credential ID should be set
 	assert.NotZero(t, authProvider.ID) // AuthProvider ID should be set
 
 	// Verify user, credential, and auth provider exist in DB
-	retrievedUser, retrievedCredential, err := store.GetUserByID(user.ID)
+	retrievedUser, retrievedCredential, err := store.GetUserByID(context.Background(), user.ID)
 	assert.NoError(t, err)
 	assert.NotNil(t, retrievedUser)
 	assert.NotNil(t, retrievedCredential)
@@ -115,7 +115,7 @@ func TestUserStore_CreateUser(t *testing.T) {
 	assert.Equal(t, credential.PasswordHash, retrievedCredential.PasswordHash)
 	assert.Equal(t, user.ID, retrievedCredential.UserID)
 
-	retrievedUserByUsername, retrievedCredentialByUsername, err := store.GetUserByUsername("testuser")
+	retrievedUserByUsername, retrievedCredentialByUsername, err := store.GetUserByUsername(context.Background(), "testuser")
 	assert.NoError(t, err)
 	assert.NotNil(t, retrievedUserByUsername)
 	assert.NotNil(t, retrievedCredentialByUsername)
@@ -138,7 +138,7 @@ func TestUserStore_GetUserByUsername_NotFound(t *testing.T) {
 
 	store := &UserStore{db: pool}
 
-	user, credential, err := store.GetUserByUsername("nonexistent")
+	user, credential, err := store.GetUserByUsername(context.Background(), "nonexistent")
 	assert.NoError(t, err) // pgx.ErrNoRows is handled to return nil, nil
 	assert.Nil(t, user)
 	assert.Nil(t, credential)
@@ -150,7 +150,7 @@ func TestUserStore_GetUserByID_NotFound(t *testing.T) {
 
 	store := &UserStore{db: pool}
 
-	user, credential, err := store.GetUserByID(999) // Non-existent ID
+	user, credential, err := store.GetUserByID(context.Background(), 999) // Non-existent ID
 	assert.NoError(t, err)
 	assert.Nil(t, user)
 	assert.Nil(t, credential)
@@ -176,7 +176,7 @@ func TestUserStore_CreateUser_DuplicateUsername(t *testing.T) {
 		Provider:       "local",
 		ProviderUserID: "duplicateuser_id",
 	}
-	err := store.CreateUser(user1, credential1, authProvider1)
+	err := store.CreateUser(context.Background(), user1, credential1, authProvider1)
 	assert.NoError(t, err)
 
 	user2 := &model.User{
@@ -192,7 +192,7 @@ func TestUserStore_CreateUser_DuplicateUsername(t *testing.T) {
 		Provider:       "local",
 		ProviderUserID: "anotheruser_id",
 	}
-	err = store.CreateUser(user2, credential2, authProvider2)
+	err = store.CreateUser(context.Background(), user2, credential2, authProvider2)
 	assert.Error(t, err) // Expect an error for duplicate username
 	assert.Contains(t, err.Error(), "duplicate key value violates unique constraint \"users_username_key\"")
 }

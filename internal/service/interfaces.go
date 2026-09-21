@@ -13,10 +13,10 @@ import (
 
 // UserStoreInterface defines the methods for interacting with user storage.
 type UserStoreInterface interface {
-	CreateUser(user *model.User, credential *model.UserCredential, authProvider *model.UserAuthProvider) error
-	GetUserByUsername(username string) (*model.User, *model.UserCredential, error)
-	GetUserByEmail(email string) (*model.User, *model.UserCredential, error)
-	GetUserByID(userID uint64) (*model.User, *model.UserCredential, error)
+	CreateUser(ctx context.Context, user *model.User, credential *model.UserCredential, authProvider *model.UserAuthProvider) error
+	GetUserByUsername(ctx context.Context, username string) (*model.User, *model.UserCredential, error)
+	GetUserByEmail(ctx context.Context, email string) (*model.User, *model.UserCredential, error)
+	GetUserByID(ctx context.Context, userID uint64) (*model.User, *model.UserCredential, error)
 }
 
 // EthClientInterface defines the methods of ethclient.Client that BlockchainDataFetcherService uses.

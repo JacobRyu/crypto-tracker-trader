@@ -37,7 +37,7 @@ func TestDefiSyncService_SyncPositions_Success(t *testing.T) {
 	proto.On("GetPositions", mock.Anything, addr).Return([]defi.Position{
 		{Protocol: "mock-defi", PositionType: defi.PositionTypeLP, Data: []byte(`{"test":"data"}`)},
 	}, nil)
-	mockDS.On("UpsertPosition", mock.AnythingOfType("*model.UserDefiPosition")).Return(nil)
+	mockDS.On("UpsertPosition", mock.Anything, mock.AnythingOfType("*model.UserDefiPosition")).Return(nil)
 
 	err := svc.SyncPositions(context.Background(), 1, addr)
 	require.NoError(t, err)
@@ -63,7 +63,7 @@ func TestDefiSyncService_GetPositions(t *testing.T) {
 	mockWS := new(store.MockWalletStore)
 	svc := NewDefiSyncService(mockDS, mockWS)
 
-	mockDS.On("GetPositionsByUserID", uint64(1)).Return([]model.UserDefiPosition{
+	mockDS.On("GetPositionsByUserID", mock.Anything, uint64(1)).Return([]model.UserDefiPosition{
 		{ID: 1, WalletID: 2, Protocol: "uniswap-v3", PositionType: "lp"},
 	}, nil)
 

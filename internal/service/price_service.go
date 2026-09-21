@@ -39,7 +39,7 @@ func (s *PriceService) FetchAndSave(ctx context.Context, symbols []string) error
 		return fmt.Errorf("fetch prices: %w", err)
 	}
 	for symbol, priceUSD := range prices {
-		if err := s.priceStore.SavePrice(symbol, priceUSD, s.source); err != nil {
+		if err := s.priceStore.SavePrice(ctx, symbol, priceUSD, s.source); err != nil {
 			log.Printf("PriceService: failed to save price for %s: %v", symbol, err)
 			continue
 		}
@@ -65,7 +65,7 @@ func (s *PriceService) FetchAndSave(ctx context.Context, symbols []string) error
 
 // GetLatestPrice returns the most recent price for the given symbol.
 func (s *PriceService) GetLatestPrice(ctx context.Context, symbol string) (*model.AssetPrice, error) {
-	price, err := s.priceStore.GetLatestPrice(symbol)
+	price, err := s.priceStore.GetLatestPrice(ctx, symbol)
 	if err != nil {
 		return nil, fmt.Errorf("get latest price: %w", err)
 	}
@@ -74,7 +74,7 @@ func (s *PriceService) GetLatestPrice(ctx context.Context, symbol string) (*mode
 
 // GetPriceHistory returns recent price records for the given symbol.
 func (s *PriceService) GetPriceHistory(ctx context.Context, symbol string, limit int) ([]model.AssetPrice, error) {
-	prices, err := s.priceStore.GetPriceHistory(symbol, limit)
+	prices, err := s.priceStore.GetPriceHistory(ctx, symbol, limit)
 	if err != nil {
 		return nil, fmt.Errorf("get price history: %w", err)
 	}

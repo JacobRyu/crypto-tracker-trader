@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -11,8 +12,8 @@ import (
 
 // Sentinel errors for user service operations.
 var (
-	ErrUsernameTaken     = errors.New("username already taken")
-	ErrEmailTaken        = errors.New("email already taken")
+	ErrUsernameTaken      = errors.New("username already taken")
+	ErrEmailTaken         = errors.New("email already taken")
 	ErrInvalidCredentials = errors.New("invalid credentials")
 )
 
@@ -30,8 +31,9 @@ func NewUserService(us UserStoreInterface) *UserService {
 
 // RegisterUser registers a new user.
 func (s *UserService) RegisterUser(username, email, password string) (*model.User, error) {
+	ctx := context.Background()
 	// Check if user already exists
-	existingUser, _, err := s.userStore.GetUserByUsername(username)
+	existingUser, _, err := s.userStore.GetUserByUsername(ctx, username)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check existing user: %w", err)
 	}
@@ -39,7 +41,7 @@ func (s *UserService) RegisterUser(username, email, password string) (*model.Use
 		return nil, errors.New("username already taken")
 	}
 
-	existingUser, _, err = s.userStore.GetUserByEmail(email)
+	existingUser, _, err = s.userStore.GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check existing user: %w", err)
 	}
@@ -70,7 +72,7 @@ func (s *UserService) RegisterUser(username, email, password string) (*model.Use
 	}
 
 	// Store the user, credential, and auth provider
-	if err := s.userStore.CreateUser(user, credential, authProvider); err != nil {
+	if err := s.userStore.CreateUser(ctx, user, credential, authProvider); err != nil {
 		return nil, fmt.Errorf("failed to create user in store: %w", err)
 	}
 
@@ -79,7 +81,8 @@ func (s *UserService) RegisterUser(username, email, password string) (*model.Use
 
 // LoginUser authenticates a user.
 func (s *UserService) LoginUser(email, password string) (*model.User, error) {
-	user, credential, err := s.userStore.GetUserByEmail(email)
+	ctx := context.Background()
+	user, credential, err := s.userStore.GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve user: %w", err)
 	}
@@ -97,7 +100,8 @@ func (s *UserService) LoginUser(email, password string) (*model.User, error) {
 
 // GetUserByID retrieves a user by their ID.
 func (s *UserService) GetUserByID(userID uint64) (*model.User, error) {
-	user, _, err := s.userStore.GetUserByID(userID)
+	ctx := context.Background()
+	user, _, err := s.userStore.GetUserByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve user by ID: %w", err)
 	}

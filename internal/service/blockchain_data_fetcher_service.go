@@ -63,7 +63,7 @@ func (s *BlockchainDataFetcherService) FetchAndSaveETHBalance(ctx context.Contex
 	}
 
 	// Save the snapshot to the portfolio store
-	if err := s.portfolioStore.AddSnapshot(snapshot); err != nil {
+	if err := s.portfolioStore.AddSnapshot(ctx, snapshot); err != nil {
 		return fmt.Errorf("failed to add portfolio snapshot: %w", err)
 	}
 

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	appCrypto "crypto-tracker-trader/internal/crypto"
 	"crypto-tracker-trader/internal/client/exchange"
 	"crypto-tracker-trader/internal/client/exchange/binance"
+	appCrypto "crypto-tracker-trader/internal/crypto"
 	"crypto-tracker-trader/internal/model"
 	"crypto-tracker-trader/internal/store"
 )
@@ -71,7 +71,7 @@ func (s *ExchangeService) AddCredential(ctx context.Context, userID uint64, exch
 		APISecretEncrypted: encSecret,
 		IsActive:           true,
 	}
-	if err := s.store.CreateCredential(cred); err != nil {
+	if err := s.store.CreateCredential(ctx, cred); err != nil {
 		return nil, fmt.Errorf("exchange service: saving credential: %w", err)
 	}
 	return cred, nil
@@ -79,7 +79,7 @@ func (s *ExchangeService) AddCredential(ctx context.Context, userID uint64, exch
 
 // GetCredentials returns the user's exchange credentials (without encrypted key bytes).
 func (s *ExchangeService) GetCredentials(ctx context.Context, userID uint64) ([]model.ExchangeCredential, error) {
-	creds, err := s.store.GetCredentialsByUserID(userID)
+	creds, err := s.store.GetCredentialsByUserID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("exchange service: get credentials: %w", err)
 	}
@@ -93,7 +93,7 @@ func (s *ExchangeService) GetCredentials(ctx context.Context, userID uint64) ([]
 
 // DeleteCredential removes an exchange credential (and cascades to balances).
 func (s *ExchangeService) DeleteCredential(ctx context.Context, credentialID, userID uint64) error {
-	err := s.store.DeleteCredential(credentialID, userID)
+	err := s.store.DeleteCredential(ctx, credentialID, userID)
 	if err == store.ErrNotFound {
 		return store.ErrNotFound
 	}
@@ -102,7 +102,7 @@ func (s *ExchangeService) DeleteCredential(ctx context.Context, credentialID, us
 
 // SyncBalances fetches live balances for the given credential and upserts them.
 func (s *ExchangeService) SyncBalances(ctx context.Context, credentialID uint64) ([]model.ExchangeBalance, error) {
-	cred, err := s.store.GetCredentialByID(credentialID)
+	cred, err := s.store.GetCredentialByID(ctx, credentialID)
 	if err != nil {
 		return nil, fmt.Errorf("exchange service: loading credential: %w", err)
 	}
@@ -137,7 +137,7 @@ func (s *ExchangeService) SyncBalances(ctx context.Context, credentialID uint64)
 		}
 	}
 
-	if err := s.store.UpsertBalances(credentialID, cred.UserID, modelBalances); err != nil {
+	if err := s.store.UpsertBalances(ctx, credentialID, cred.UserID, modelBalances); err != nil {
 		return nil, fmt.Errorf("exchange service: upserting balances: %w", err)
 	}
 	return modelBalances, nil
@@ -145,7 +145,7 @@ func (s *ExchangeService) SyncBalances(ctx context.Context, credentialID uint64)
 
 // GetBalances returns the latest known balances for a user across all exchanges.
 func (s *ExchangeService) GetBalances(ctx context.Context, userID uint64) ([]model.ExchangeBalance, error) {
-	return s.store.GetBalancesByUserID(userID)
+	return s.store.GetBalancesByUserID(ctx, userID)
 }
 
 // StartSync launches a goroutine that periodically syncs all active credentials.
@@ -166,7 +166,7 @@ func (s *ExchangeService) StartSync(ctx context.Context, interval time.Duration)
 }
 
 func (s *ExchangeService) runSync(ctx context.Context) {
-	creds, err := s.store.GetAllActiveCredentials()
+	creds, err := s.store.GetAllActiveCredentials(ctx)
 	if err != nil {
 		log.Printf("exchange sync: loading credentials: %v", err)
 		return

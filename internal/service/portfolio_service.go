@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+
 	"crypto-tracker-trader/internal/model"
 	"crypto-tracker-trader/internal/store"
 )
@@ -17,5 +19,5 @@ func NewPortfolioService(portfolioStore store.PortfolioStoreInterface) Portfolio
 }
 
 func (s *PortfolioService) GetPortfolioHistory() ([]model.PortfolioSnapshot, error) {
-	return s.portfolioStore.GetHistory()
+	return s.portfolioStore.GetHistory(context.Background())
 }

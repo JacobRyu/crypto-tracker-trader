@@ -21,7 +21,7 @@ func newWalletService(ms *storemod.MockWalletStore) *WalletService {
 func TestWalletService_AddWallet(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		ms := new(storemod.MockWalletStore)
-		ms.On("CreateWallet", mock.AnythingOfType("*model.UserWallet")).Return(nil)
+		ms.On("CreateWallet", mock.Anything, mock.AnythingOfType("*model.UserWallet")).Return(nil)
 		svc := newWalletService(ms)
 		wallet, err := svc.AddWallet(1, "ethereum", "0xABC", "main")
 		require.NoError(t, err)
@@ -49,7 +49,7 @@ func TestWalletService_AddWallet(t *testing.T) {
 
 	t.Run("duplicate address returns friendly error", func(t *testing.T) {
 		ms := new(storemod.MockWalletStore)
-		ms.On("CreateWallet", mock.AnythingOfType("*model.UserWallet")).
+		ms.On("CreateWallet", mock.Anything, mock.AnythingOfType("*model.UserWallet")).
 			Return(errors.New("unique constraint violation"))
 		svc := newWalletService(ms)
 		_, err := svc.AddWallet(1, "ethereum", "0xDUP", "")
@@ -58,7 +58,7 @@ func TestWalletService_AddWallet(t *testing.T) {
 
 	t.Run("chain name is normalized to lowercase", func(t *testing.T) {
 		ms := new(storemod.MockWalletStore)
-		ms.On("CreateWallet", mock.AnythingOfType("*model.UserWallet")).Return(nil)
+		ms.On("CreateWallet", mock.Anything, mock.AnythingOfType("*model.UserWallet")).Return(nil)
 		svc := newWalletService(ms)
 		wallet, err := svc.AddWallet(1, "ETHEREUM", "0xABC", "")
 		require.NoError(t, err)
@@ -70,7 +70,7 @@ func TestWalletService_GetWallets(t *testing.T) {
 	t.Run("returns wallets", func(t *testing.T) {
 		ms := new(storemod.MockWalletStore)
 		expected := []model.UserWallet{{ID: 1, UserID: 5, Chain: "ethereum"}}
-		ms.On("GetWalletsByUserID", uint64(5)).Return(expected, nil)
+		ms.On("GetWalletsByUserID", mock.Anything, uint64(5)).Return(expected, nil)
 		svc := newWalletService(ms)
 		wallets, err := svc.GetWallets(5)
 		require.NoError(t, err)
@@ -79,7 +79,7 @@ func TestWalletService_GetWallets(t *testing.T) {
 
 	t.Run("nil result becomes empty slice", func(t *testing.T) {
 		ms := new(storemod.MockWalletStore)
-		ms.On("GetWalletsByUserID", uint64(9)).Return(nil, nil)
+		ms.On("GetWalletsByUserID", mock.Anything, uint64(9)).Return(nil, nil)
 		svc := newWalletService(ms)
 		wallets, err := svc.GetWallets(9)
 		require.NoError(t, err)
@@ -91,14 +91,14 @@ func TestWalletService_GetWallets(t *testing.T) {
 func TestWalletService_DeleteWallet(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		ms := new(storemod.MockWalletStore)
-		ms.On("DeleteWallet", uint64(3), uint64(1)).Return(nil)
+		ms.On("DeleteWallet", mock.Anything, uint64(3), uint64(1)).Return(nil)
 		svc := newWalletService(ms)
 		assert.NoError(t, svc.DeleteWallet(3, 1))
 	})
 
 	t.Run("not found propagates ErrNotFound", func(t *testing.T) {
 		ms := new(storemod.MockWalletStore)
-		ms.On("DeleteWallet", uint64(99), uint64(1)).Return(store.ErrNotFound)
+		ms.On("DeleteWallet", mock.Anything, uint64(99), uint64(1)).Return(store.ErrNotFound)
 		svc := newWalletService(ms)
 		err := svc.DeleteWallet(99, 1)
 		assert.ErrorIs(t, err, store.ErrNotFound)
@@ -110,8 +110,8 @@ func TestWalletService_GetWalletAssets(t *testing.T) {
 		ms := new(storemod.MockWalletStore)
 		wallet := &model.UserWallet{ID: 2, UserID: 1}
 		assets := []model.UserAsset{{ID: 1, WalletID: 2, Symbol: "ETH"}}
-		ms.On("GetWalletByID", uint64(2)).Return(wallet, nil)
-		ms.On("GetAssetsByWalletID", uint64(2)).Return(assets, nil)
+		ms.On("GetWalletByID", mock.Anything, uint64(2)).Return(wallet, nil)
+		ms.On("GetAssetsByWalletID", mock.Anything, uint64(2)).Return(assets, nil)
 		svc := newWalletService(ms)
 		result, err := svc.GetWalletAssets(2, 1)
 		require.NoError(t, err)
@@ -122,7 +122,7 @@ func TestWalletService_GetWalletAssets(t *testing.T) {
 	t.Run("wallet belongs to different user returns ErrNotFound", func(t *testing.T) {
 		ms := new(storemod.MockWalletStore)
 		wallet := &model.UserWallet{ID: 2, UserID: 99}
-		ms.On("GetWalletByID", uint64(2)).Return(wallet, nil)
+		ms.On("GetWalletByID", mock.Anything, uint64(2)).Return(wallet, nil)
 		svc := newWalletService(ms)
 		_, err := svc.GetWalletAssets(2, 1)
 		assert.ErrorIs(t, err, store.ErrNotFound)
@@ -132,8 +132,8 @@ func TestWalletService_GetWalletAssets(t *testing.T) {
 	t.Run("nil assets becomes empty slice", func(t *testing.T) {
 		ms := new(storemod.MockWalletStore)
 		wallet := &model.UserWallet{ID: 2, UserID: 1}
-		ms.On("GetWalletByID", uint64(2)).Return(wallet, nil)
-		ms.On("GetAssetsByWalletID", uint64(2)).Return(nil, nil)
+		ms.On("GetWalletByID", mock.Anything, uint64(2)).Return(wallet, nil)
+		ms.On("GetAssetsByWalletID", mock.Anything, uint64(2)).Return(nil, nil)
 		svc := newWalletService(ms)
 		result, err := svc.GetWalletAssets(2, 1)
 		require.NoError(t, err)

@@ -9,6 +9,7 @@ import (
 	"crypto-tracker-trader/internal/store"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,10 +25,10 @@ func newTestAggregationService() (*PortfolioAggregationService, *store.MockWalle
 func TestGetSummary_EmptyPortfolio(t *testing.T) {
 	svc, ws, _, es, ds := newTestAggregationService()
 
-	ws.On("GetWalletsByUserID", uint64(1)).Return([]model.UserWallet{}, nil)
-	es.On("GetBalancesByUserID", uint64(1)).Return([]model.ExchangeBalance{}, nil)
-	es.On("GetCredentialsByUserID", uint64(1)).Return([]model.ExchangeCredential{}, nil)
-	ds.On("GetPositionsByUserID", uint64(1)).Return([]model.UserDefiPosition{}, nil)
+	ws.On("GetWalletsByUserID", mock.Anything, uint64(1)).Return([]model.UserWallet{}, nil)
+	es.On("GetBalancesByUserID", mock.Anything, uint64(1)).Return([]model.ExchangeBalance{}, nil)
+	es.On("GetCredentialsByUserID", mock.Anything, uint64(1)).Return([]model.ExchangeCredential{}, nil)
+	ds.On("GetPositionsByUserID", mock.Anything, uint64(1)).Return([]model.UserDefiPosition{}, nil)
 
 	summary, err := svc.GetSummary(context.Background(), 1)
 	require.NoError(t, err)
@@ -38,18 +39,18 @@ func TestGetSummary_EmptyPortfolio(t *testing.T) {
 func TestGetSummary_WalletAssets(t *testing.T) {
 	svc, ws, ps, es, ds := newTestAggregationService()
 
-	ws.On("GetWalletsByUserID", uint64(1)).Return([]model.UserWallet{
+	ws.On("GetWalletsByUserID", mock.Anything, uint64(1)).Return([]model.UserWallet{
 		{ID: 1, UserID: 1, Chain: "ethereum"},
 	}, nil)
-	ws.On("GetAssetsByWalletID", uint64(1)).Return([]model.UserAsset{
+	ws.On("GetAssetsByWalletID", mock.Anything, uint64(1)).Return([]model.UserAsset{
 		{Symbol: "ETH", Balance: "2.5"},
 		{Symbol: "USDC", Balance: "1000"},
 	}, nil)
-	ps.On("GetLatestPrice", "ETH").Return(&model.AssetPrice{Symbol: "ETH", PriceUSD: "3000.00000000", FetchedAt: time.Now()}, nil)
-	ps.On("GetLatestPrice", "USDC").Return(&model.AssetPrice{Symbol: "USDC", PriceUSD: "1.00000000", FetchedAt: time.Now()}, nil)
-	es.On("GetBalancesByUserID", uint64(1)).Return([]model.ExchangeBalance{}, nil)
-	es.On("GetCredentialsByUserID", uint64(1)).Return([]model.ExchangeCredential{}, nil)
-	ds.On("GetPositionsByUserID", uint64(1)).Return([]model.UserDefiPosition{}, nil)
+	ps.On("GetLatestPrice", mock.Anything, "ETH").Return(&model.AssetPrice{Symbol: "ETH", PriceUSD: "3000.00000000", FetchedAt: time.Now()}, nil)
+	ps.On("GetLatestPrice", mock.Anything, "USDC").Return(&model.AssetPrice{Symbol: "USDC", PriceUSD: "1.00000000", FetchedAt: time.Now()}, nil)
+	es.On("GetBalancesByUserID", mock.Anything, uint64(1)).Return([]model.ExchangeBalance{}, nil)
+	es.On("GetCredentialsByUserID", mock.Anything, uint64(1)).Return([]model.ExchangeCredential{}, nil)
+	ds.On("GetPositionsByUserID", mock.Anything, uint64(1)).Return([]model.UserDefiPosition{}, nil)
 
 	summary, err := svc.GetSummary(context.Background(), 1)
 	require.NoError(t, err)
@@ -63,15 +64,15 @@ func TestGetSummary_WalletAssets(t *testing.T) {
 func TestGetSummary_ExchangeBalances(t *testing.T) {
 	svc, ws, ps, es, ds := newTestAggregationService()
 
-	ws.On("GetWalletsByUserID", uint64(1)).Return([]model.UserWallet{}, nil)
-	es.On("GetBalancesByUserID", uint64(1)).Return([]model.ExchangeBalance{
+	ws.On("GetWalletsByUserID", mock.Anything, uint64(1)).Return([]model.UserWallet{}, nil)
+	es.On("GetBalancesByUserID", mock.Anything, uint64(1)).Return([]model.ExchangeBalance{
 		{ID: 1, CredentialID: 1, UserID: 1, Symbol: "BTC", FreeBalance: "0.5", LockedBalance: "0"},
 	}, nil)
-	es.On("GetCredentialsByUserID", uint64(1)).Return([]model.ExchangeCredential{
+	es.On("GetCredentialsByUserID", mock.Anything, uint64(1)).Return([]model.ExchangeCredential{
 		{ID: 1, Exchange: "binance"},
 	}, nil)
-	ps.On("GetLatestPrice", "BTC").Return(&model.AssetPrice{Symbol: "BTC", PriceUSD: "60000.00000000", FetchedAt: time.Now()}, nil)
-	ds.On("GetPositionsByUserID", uint64(1)).Return([]model.UserDefiPosition{}, nil)
+	ps.On("GetLatestPrice", mock.Anything, "BTC").Return(&model.AssetPrice{Symbol: "BTC", PriceUSD: "60000.00000000", FetchedAt: time.Now()}, nil)
+	ds.On("GetPositionsByUserID", mock.Anything, uint64(1)).Return([]model.UserDefiPosition{}, nil)
 
 	summary, err := svc.GetSummary(context.Background(), 1)
 	require.NoError(t, err)
@@ -85,16 +86,16 @@ func TestGetSummary_ExchangeBalances(t *testing.T) {
 func TestGetSummary_UnknownSymbolPrice(t *testing.T) {
 	svc, ws, ps, es, ds := newTestAggregationService()
 
-	ws.On("GetWalletsByUserID", uint64(1)).Return([]model.UserWallet{
+	ws.On("GetWalletsByUserID", mock.Anything, uint64(1)).Return([]model.UserWallet{
 		{ID: 1, Chain: "ethereum"},
 	}, nil)
-	ws.On("GetAssetsByWalletID", uint64(1)).Return([]model.UserAsset{
+	ws.On("GetAssetsByWalletID", mock.Anything, uint64(1)).Return([]model.UserAsset{
 		{Symbol: "UNKNOWN_TOKEN", Balance: "100"},
 	}, nil)
-	ps.On("GetLatestPrice", "UNKNOWN_TOKEN").Return(nil, store.ErrNotFound)
-	es.On("GetBalancesByUserID", uint64(1)).Return([]model.ExchangeBalance{}, nil)
-	es.On("GetCredentialsByUserID", uint64(1)).Return([]model.ExchangeCredential{}, nil)
-	ds.On("GetPositionsByUserID", uint64(1)).Return([]model.UserDefiPosition{}, nil)
+	ps.On("GetLatestPrice", mock.Anything, "UNKNOWN_TOKEN").Return(nil, store.ErrNotFound)
+	es.On("GetBalancesByUserID", mock.Anything, uint64(1)).Return([]model.ExchangeBalance{}, nil)
+	es.On("GetCredentialsByUserID", mock.Anything, uint64(1)).Return([]model.ExchangeCredential{}, nil)
+	ds.On("GetPositionsByUserID", mock.Anything, uint64(1)).Return([]model.UserDefiPosition{}, nil)
 
 	summary, err := svc.GetSummary(context.Background(), 1)
 	require.NoError(t, err)

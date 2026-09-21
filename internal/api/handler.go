@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 // APIConfig holds all dependencies for the API server.
@@ -156,6 +157,8 @@ func (a *API) GetPortfolioHistory(c *gin.Context) {
 }
 
 func (a *API) RegisterRoutes(r *gin.Engine) {
+	r.Use(otelgin.Middleware("crypto-tracker-trader"))
+
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})

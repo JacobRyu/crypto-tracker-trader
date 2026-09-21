@@ -43,8 +43,8 @@ func TestPriceService_FetchAndSave_Success(t *testing.T) {
 
 	prices := map[string]string{"BTC": "65000.00000000", "ETH": "3500.00000000"}
 	mf.On("FetchPrices", mock.Anything, []string{"BTC", "ETH"}).Return(prices, nil)
-	ms.On("SavePrice", "BTC", "65000.00000000", "test").Return(nil)
-	ms.On("SavePrice", "ETH", "3500.00000000", "test").Return(nil)
+	ms.On("SavePrice", mock.Anything, "BTC", "65000.00000000", "test").Return(nil)
+	ms.On("SavePrice", mock.Anything, "ETH", "3500.00000000", "test").Return(nil)
 
 	err := svc.FetchAndSave(context.Background(), []string{"BTC", "ETH"})
 	require.NoError(t, err)
@@ -73,8 +73,8 @@ func TestPriceService_FetchAndSave_SaveErrorContinues(t *testing.T) {
 
 	prices := map[string]string{"BTC": "65000.00000000", "ETH": "3500.00000000"}
 	mf.On("FetchPrices", mock.Anything, mock.Anything).Return(prices, nil)
-	ms.On("SavePrice", "BTC", "65000.00000000", "test").Return(errors.New("db error"))
-	ms.On("SavePrice", "ETH", "3500.00000000", "test").Return(nil)
+	ms.On("SavePrice", mock.Anything, "BTC", "65000.00000000", "test").Return(errors.New("db error"))
+	ms.On("SavePrice", mock.Anything, "ETH", "3500.00000000", "test").Return(nil)
 
 	// FetchAndSave itself should not return error even if individual saves fail.
 	err := svc.FetchAndSave(context.Background(), []string{"BTC", "ETH"})
@@ -88,7 +88,7 @@ func TestPriceService_GetLatestPrice_Success(t *testing.T) {
 	svc := newTestPriceService(mf, ms)
 
 	expected := &model.AssetPrice{Symbol: "BTC", PriceUSD: "65000.00000000", Source: "test"}
-	ms.On("GetLatestPrice", "BTC").Return(expected, nil)
+	ms.On("GetLatestPrice", mock.Anything, "BTC").Return(expected, nil)
 
 	price, err := svc.GetLatestPrice(context.Background(), "BTC")
 	require.NoError(t, err)
@@ -100,7 +100,7 @@ func TestPriceService_GetLatestPrice_NotFound(t *testing.T) {
 	ms := new(storemod.MockPriceStore)
 	svc := newTestPriceService(mf, ms)
 
-	ms.On("GetLatestPrice", "UNKNOWN").Return(nil, store.ErrNotFound)
+	ms.On("GetLatestPrice", mock.Anything, "UNKNOWN").Return(nil, store.ErrNotFound)
 
 	_, err := svc.GetLatestPrice(context.Background(), "UNKNOWN")
 	assert.ErrorIs(t, err, store.ErrNotFound)
@@ -111,7 +111,7 @@ func TestPriceService_GetPriceHistory_EmptyBecomesSlice(t *testing.T) {
 	ms := new(storemod.MockPriceStore)
 	svc := newTestPriceService(mf, ms)
 
-	ms.On("GetPriceHistory", "BTC", 10).Return(nil, nil)
+	ms.On("GetPriceHistory", mock.Anything, "BTC", 10).Return(nil, nil)
 
 	history, err := svc.GetPriceHistory(context.Background(), "BTC", 10)
 	require.NoError(t, err)
@@ -126,7 +126,7 @@ func TestPriceService_StartSync_StopsOnContextCancel(t *testing.T) {
 
 	// Allow any number of FetchPrices + SavePrice calls.
 	mf.On("FetchPrices", mock.Anything, mock.Anything).Return(map[string]string{"BTC": "1.0"}, nil).Maybe()
-	ms.On("SavePrice", mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+	ms.On("SavePrice", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	svc.StartSync(ctx, []string{"BTC"}, 50*time.Millisecond)

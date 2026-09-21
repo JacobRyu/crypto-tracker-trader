@@ -40,7 +40,7 @@ func (s *DefiSyncService) SyncPositions(ctx context.Context, walletID uint64, ad
 			continue // don't fail entire sync on one protocol error
 		}
 		for _, pos := range positions {
-			if err := s.savePosition(walletID, proto.ProtocolName(), pos); err != nil {
+			if err := s.savePosition(ctx, walletID, proto.ProtocolName(), pos); err != nil {
 				log.Printf("defi sync: saving position %s/%s: %v", proto.ProtocolName(), pos.PositionType, err)
 			}
 		}
@@ -48,12 +48,12 @@ func (s *DefiSyncService) SyncPositions(ctx context.Context, walletID uint64, ad
 	return nil
 }
 
-func (s *DefiSyncService) savePosition(walletID uint64, protocol string, pos defi.Position) error {
+func (s *DefiSyncService) savePosition(ctx context.Context, walletID uint64, protocol string, pos defi.Position) error {
 	rawJSON, err := json.Marshal(pos.Data)
 	if err != nil {
 		return fmt.Errorf("marshalling defi position: %w", err)
 	}
-	return s.defiStore.UpsertPosition(&model.UserDefiPosition{
+	return s.defiStore.UpsertPosition(ctx, &model.UserDefiPosition{
 		WalletID:     walletID,
 		Protocol:     protocol,
 		PositionType: string(pos.PositionType),
@@ -64,7 +64,7 @@ func (s *DefiSyncService) savePosition(walletID uint64, protocol string, pos def
 
 // GetPositions returns all DeFi positions for a user.
 func (s *DefiSyncService) GetPositions(ctx context.Context, userID uint64) ([]model.UserDefiPosition, error) {
-	return s.defiStore.GetPositionsByUserID(userID)
+	return s.defiStore.GetPositionsByUserID(ctx, userID)
 }
 
 // StartSync launches a goroutine that periodically syncs all Ethereum wallets.

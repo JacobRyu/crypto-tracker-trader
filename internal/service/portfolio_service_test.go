@@ -8,6 +8,7 @@ import (
 	"crypto-tracker-trader/internal/store"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestPortfolioService(t *testing.T) {
@@ -24,7 +25,7 @@ func TestPortfolioService(t *testing.T) {
 	}
 	snapshots := []model.PortfolioSnapshot{snapshot}
 
-	mockStore.On("GetHistory").Return(snapshots, nil)
+	mockStore.On("GetHistory", mock.Anything).Return(snapshots, nil)
 
 	// Test GetPortfolioHistory
 	history, err := portfolioService.GetPortfolioHistory()

@@ -1,6 +1,8 @@
 package store
 
 import (
+	"context"
+
 	"crypto-tracker-trader/internal/model"
 
 	"github.com/stretchr/testify/mock"
@@ -10,13 +12,13 @@ type MockPortfolioStore struct {
 	mock.Mock
 }
 
-func (m *MockPortfolioStore) AddSnapshot(snapshot model.PortfolioSnapshot) error {
-	args := m.Called(snapshot)
+func (m *MockPortfolioStore) AddSnapshot(ctx context.Context, snapshot model.PortfolioSnapshot) error {
+	args := m.Called(ctx, snapshot)
 	return args.Error(0)
 }
 
-func (m *MockPortfolioStore) GetHistory() ([]model.PortfolioSnapshot, error) {
-	args := m.Called()
+func (m *MockPortfolioStore) GetHistory(ctx context.Context) ([]model.PortfolioSnapshot, error) {
+	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

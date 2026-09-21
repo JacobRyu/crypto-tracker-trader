@@ -28,8 +28,7 @@ func (s *UserStore) Close() {
 }
 
 // CreateUser inserts a new user, their credential, and auth provider into the database.
-func (s *UserStore) CreateUser(user *model.User, credential *model.UserCredential, authProvider *model.UserAuthProvider) error {
-	ctx := context.Background()
+func (s *UserStore) CreateUser(ctx context.Context, user *model.User, credential *model.UserCredential, authProvider *model.UserAuthProvider) error {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
@@ -72,8 +71,7 @@ func (s *UserStore) CreateUser(user *model.User, credential *model.UserCredentia
 }
 
 // GetUserByUsername retrieves a user and their credential by username.
-func (s *UserStore) GetUserByUsername(username string) (*model.User, *model.UserCredential, error) {
-	ctx := context.Background()
+func (s *UserStore) GetUserByUsername(ctx context.Context, username string) (*model.User, *model.UserCredential, error) {
 	user := &model.User{}
 	credential := &model.UserCredential{}
 	err := s.db.QueryRow(ctx,
@@ -94,8 +92,7 @@ func (s *UserStore) GetUserByUsername(username string) (*model.User, *model.User
 }
 
 // GetUserByEmail retrieves a user and their credential by email.
-func (s *UserStore) GetUserByEmail(email string) (*model.User, *model.UserCredential, error) {
-	ctx := context.Background()
+func (s *UserStore) GetUserByEmail(ctx context.Context, email string) (*model.User, *model.UserCredential, error) {
 	user := &model.User{}
 	credential := &model.UserCredential{}
 	err := s.db.QueryRow(ctx,
@@ -116,8 +113,7 @@ func (s *UserStore) GetUserByEmail(email string) (*model.User, *model.UserCreden
 }
 
 // GetUserByID retrieves a user and their credential by ID.
-func (s *UserStore) GetUserByID(id uint64) (*model.User, *model.UserCredential, error) {
-	ctx := context.Background()
+func (s *UserStore) GetUserByID(ctx context.Context, id uint64) (*model.User, *model.UserCredential, error) {
 	user := &model.User{}
 	credential := &model.UserCredential{}
 	err := s.db.QueryRow(ctx,

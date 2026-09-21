@@ -19,23 +19,23 @@ func NewExchangeStore(pool *pgxpool.Pool) *ExchangeStore {
 	return &ExchangeStore{pool: pool}
 }
 
-func (s *ExchangeStore) CreateCredential(cred *model.ExchangeCredential) error {
+func (s *ExchangeStore) CreateCredential(ctx context.Context, cred *model.ExchangeCredential) error {
 	const q = `
 		INSERT INTO exchange_credentials (user_id, exchange, api_key_encrypted, api_secret_encrypted, is_active, created_at)
 		VALUES ($1, $2, $3, $4, TRUE, NOW())
 		RETURNING id, created_at`
-	return s.pool.QueryRow(context.Background(), q,
+	return s.pool.QueryRow(ctx, q,
 		cred.UserID, cred.Exchange, cred.APIKeyEncrypted, cred.APISecretEncrypted,
 	).Scan(&cred.ID, &cred.CreatedAt)
 }
 
-func (s *ExchangeStore) GetCredentialsByUserID(userID uint64) ([]model.ExchangeCredential, error) {
+func (s *ExchangeStore) GetCredentialsByUserID(ctx context.Context, userID uint64) ([]model.ExchangeCredential, error) {
 	const q = `
 		SELECT id, user_id, exchange, api_key_encrypted, api_secret_encrypted, is_active, created_at
 		FROM exchange_credentials
 		WHERE user_id = $1
 		ORDER BY created_at DESC`
-	rows, err := s.pool.Query(context.Background(), q, userID)
+	rows, err := s.pool.Query(ctx, q, userID)
 	if err != nil {
 		return nil, fmt.Errorf("exchange store: query credentials: %w", err)
 	}
@@ -52,12 +52,12 @@ func (s *ExchangeStore) GetCredentialsByUserID(userID uint64) ([]model.ExchangeC
 	return creds, rows.Err()
 }
 
-func (s *ExchangeStore) GetCredentialByID(id uint64) (*model.ExchangeCredential, error) {
+func (s *ExchangeStore) GetCredentialByID(ctx context.Context, id uint64) (*model.ExchangeCredential, error) {
 	const q = `
 		SELECT id, user_id, exchange, api_key_encrypted, api_secret_encrypted, is_active, created_at
 		FROM exchange_credentials WHERE id = $1`
 	var c model.ExchangeCredential
-	err := s.pool.QueryRow(context.Background(), q, id).Scan(
+	err := s.pool.QueryRow(ctx, q, id).Scan(
 		&c.ID, &c.UserID, &c.Exchange, &c.APIKeyEncrypted, &c.APISecretEncrypted, &c.IsActive, &c.CreatedAt,
 	)
 	if err != nil {
@@ -66,11 +66,11 @@ func (s *ExchangeStore) GetCredentialByID(id uint64) (*model.ExchangeCredential,
 	return &c, nil
 }
 
-func (s *ExchangeStore) GetAllActiveCredentials() ([]model.ExchangeCredential, error) {
+func (s *ExchangeStore) GetAllActiveCredentials(ctx context.Context) ([]model.ExchangeCredential, error) {
 	const q = `
 		SELECT id, user_id, exchange, api_key_encrypted, api_secret_encrypted, is_active, created_at
 		FROM exchange_credentials WHERE is_active = TRUE`
-	rows, err := s.pool.Query(context.Background(), q)
+	rows, err := s.pool.Query(ctx, q)
 	if err != nil {
 		return nil, fmt.Errorf("exchange store: query active credentials: %w", err)
 	}
@@ -87,9 +87,9 @@ func (s *ExchangeStore) GetAllActiveCredentials() ([]model.ExchangeCredential, e
 	return creds, rows.Err()
 }
 
-func (s *ExchangeStore) DeleteCredential(id, userID uint64) error {
+func (s *ExchangeStore) DeleteCredential(ctx context.Context, id, userID uint64) error {
 	const q = `DELETE FROM exchange_credentials WHERE id = $1 AND user_id = $2`
-	tag, err := s.pool.Exec(context.Background(), q, id, userID)
+	tag, err := s.pool.Exec(ctx, q, id, userID)
 	if err != nil {
 		return fmt.Errorf("exchange store: delete credential: %w", err)
 	}
@@ -100,7 +100,7 @@ func (s *ExchangeStore) DeleteCredential(id, userID uint64) error {
 }
 
 // UpsertBalances inserts or updates exchange balances for a credential.
-func (s *ExchangeStore) UpsertBalances(credentialID, userID uint64, balances []model.ExchangeBalance) error {
+func (s *ExchangeStore) UpsertBalances(ctx context.Context, credentialID, userID uint64, balances []model.ExchangeBalance) error {
 	const q = `
 		INSERT INTO exchange_balances (credential_id, user_id, symbol, free_balance, locked_balance, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6)
@@ -111,7 +111,7 @@ func (s *ExchangeStore) UpsertBalances(credentialID, userID uint64, balances []m
 
 	now := time.Now()
 	for _, b := range balances {
-		if _, err := s.pool.Exec(context.Background(), q,
+		if _, err := s.pool.Exec(ctx, q,
 			credentialID, userID, b.Symbol, b.FreeBalance, b.LockedBalance, now,
 		); err != nil {
 			return fmt.Errorf("exchange store: upsert balance %s: %w", b.Symbol, err)
@@ -120,12 +120,12 @@ func (s *ExchangeStore) UpsertBalances(credentialID, userID uint64, balances []m
 	return nil
 }
 
-func (s *ExchangeStore) GetBalancesByUserID(userID uint64) ([]model.ExchangeBalance, error) {
+func (s *ExchangeStore) GetBalancesByUserID(ctx context.Context, userID uint64) ([]model.ExchangeBalance, error) {
 	const q = `
 		SELECT id, credential_id, user_id, symbol, free_balance, locked_balance, updated_at
 		FROM exchange_balances WHERE user_id = $1
 		ORDER BY symbol`
-	rows, err := s.pool.Query(context.Background(), q, userID)
+	rows, err := s.pool.Query(ctx, q, userID)
 	if err != nil {
 		return nil, fmt.Errorf("exchange store: query balances: %w", err)
 	}
@@ -142,12 +142,12 @@ func (s *ExchangeStore) GetBalancesByUserID(userID uint64) ([]model.ExchangeBala
 	return balances, rows.Err()
 }
 
-func (s *ExchangeStore) GetBalancesByCredentialID(credentialID uint64) ([]model.ExchangeBalance, error) {
+func (s *ExchangeStore) GetBalancesByCredentialID(ctx context.Context, credentialID uint64) ([]model.ExchangeBalance, error) {
 	const q = `
 		SELECT id, credential_id, user_id, symbol, free_balance, locked_balance, updated_at
 		FROM exchange_balances WHERE credential_id = $1
 		ORDER BY symbol`
-	rows, err := s.pool.Query(context.Background(), q, credentialID)
+	rows, err := s.pool.Query(ctx, q, credentialID)
 	if err != nil {
 		return nil, fmt.Errorf("exchange store: query balances by cred: %w", err)
 	}

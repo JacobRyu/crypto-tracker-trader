@@ -77,10 +77,10 @@ func TestPortfolioStore(t *testing.T) {
 		},
 		TotalValue: "50000.00000000",
 	}
-	err := store.AddSnapshot(snapshot1)
+	err := store.AddSnapshot(context.Background(), snapshot1)
 	assert.NoError(t, err)
 
-	history, err := store.GetHistory()
+	history, err := store.GetHistory(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, history, 1)
 	assert.Equal(t, snapshot1.TotalValue, history[0].TotalValue)
@@ -92,10 +92,10 @@ func TestPortfolioStore(t *testing.T) {
 		},
 		TotalValue: "30000.00000000",
 	}
-	err = store.AddSnapshot(snapshot2)
+	err = store.AddSnapshot(context.Background(), snapshot2)
 	assert.NoError(t, err)
 
-	history, err = store.GetHistory()
+	history, err = store.GetHistory(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, history, 2)
 }

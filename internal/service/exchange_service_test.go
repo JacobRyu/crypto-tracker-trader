@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	appCrypto "crypto-tracker-trader/internal/crypto"
 	"crypto-tracker-trader/internal/client/exchange"
+	appCrypto "crypto-tracker-trader/internal/crypto"
 	"crypto-tracker-trader/internal/model"
 	"crypto-tracker-trader/internal/store"
 
@@ -51,7 +51,7 @@ func newTestExchangeService(t *testing.T) (*ExchangeService, *store.MockExchange
 
 func TestAddCredential_Success(t *testing.T) {
 	svc, mockStore, _ := newTestExchangeService(t)
-	mockStore.On("CreateCredential", mock.AnythingOfType("*model.ExchangeCredential")).
+	mockStore.On("CreateCredential", mock.Anything, mock.AnythingOfType("*model.ExchangeCredential")).
 		Return(nil).Once()
 
 	cred, err := svc.AddCredential(context.Background(), 1, "binance", "my-api-key", "my-secret")
@@ -80,7 +80,7 @@ func TestGetCredentials_StripEncryptedBytes(t *testing.T) {
 	stored := []model.ExchangeCredential{
 		{ID: 1, UserID: 1, Exchange: "binance", APIKeyEncrypted: []byte("secret"), APISecretEncrypted: []byte("secret")},
 	}
-	mockStore.On("GetCredentialsByUserID", uint64(1)).Return(stored, nil)
+	mockStore.On("GetCredentialsByUserID", mock.Anything, uint64(1)).Return(stored, nil)
 
 	creds, err := svc.GetCredentials(context.Background(), 1)
 	require.NoError(t, err)
@@ -91,7 +91,7 @@ func TestGetCredentials_StripEncryptedBytes(t *testing.T) {
 
 func TestDeleteCredential_Success(t *testing.T) {
 	svc, mockStore, _ := newTestExchangeService(t)
-	mockStore.On("DeleteCredential", uint64(1), uint64(1)).Return(nil)
+	mockStore.On("DeleteCredential", mock.Anything, uint64(1), uint64(1)).Return(nil)
 
 	err := svc.DeleteCredential(context.Background(), 1, 1)
 	assert.NoError(t, err)
@@ -99,7 +99,7 @@ func TestDeleteCredential_Success(t *testing.T) {
 
 func TestDeleteCredential_NotFound(t *testing.T) {
 	svc, mockStore, _ := newTestExchangeService(t)
-	mockStore.On("DeleteCredential", uint64(99), uint64(1)).Return(store.ErrNotFound)
+	mockStore.On("DeleteCredential", mock.Anything, uint64(99), uint64(1)).Return(store.ErrNotFound)
 
 	err := svc.DeleteCredential(context.Background(), 99, 1)
 	assert.ErrorIs(t, err, store.ErrNotFound)
@@ -114,12 +114,12 @@ func TestSyncBalances_Success(t *testing.T) {
 		ID: 1, UserID: 1, Exchange: "binance",
 		APIKeyEncrypted: encKey, APISecretEncrypted: encSecret,
 	}
-	mockStore.On("GetCredentialByID", uint64(1)).Return(cred, nil)
+	mockStore.On("GetCredentialByID", mock.Anything, uint64(1)).Return(cred, nil)
 	mockClient.On("GetBalances", mock.Anything).Return([]exchange.Balance{
 		{Symbol: "BTC", Free: "0.5", Locked: "0"},
 		{Symbol: "ETH", Free: "10", Locked: "2"},
 	}, nil)
-	mockStore.On("UpsertBalances", uint64(1), uint64(1), mock.Anything).Return(nil)
+	mockStore.On("UpsertBalances", mock.Anything, uint64(1), uint64(1), mock.Anything).Return(nil)
 
 	balances, err := svc.SyncBalances(context.Background(), 1)
 	require.NoError(t, err)
@@ -132,7 +132,7 @@ func TestSyncBalances_ClientError(t *testing.T) {
 
 	encKey, _ := appCrypto.Encrypt(testEncryptionKey, []byte("k"))
 	encSecret, _ := appCrypto.Encrypt(testEncryptionKey, []byte("s"))
-	mockStore.On("GetCredentialByID", uint64(1)).Return(&model.ExchangeCredential{
+	mockStore.On("GetCredentialByID", mock.Anything, uint64(1)).Return(&model.ExchangeCredential{
 		ID: 1, Exchange: "binance", APIKeyEncrypted: encKey, APISecretEncrypted: encSecret,
 	}, nil)
 	mockClient.On("GetBalances", mock.Anything).Return(nil, errors.New("API error"))

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -30,6 +31,7 @@ func NewWalletService(ws store.WalletStoreInterface) *WalletService {
 
 // AddWallet validates and registers a new wallet for the given user.
 func (s *WalletService) AddWallet(userID uint64, chain, address, label string) (*model.UserWallet, error) {
+	ctx := context.Background()
 	chain = strings.ToLower(strings.TrimSpace(chain))
 	address = strings.TrimSpace(address)
 
@@ -46,7 +48,7 @@ func (s *WalletService) AddWallet(userID uint64, chain, address, label string) (
 		Address: address,
 		Label:   label,
 	}
-	if err := s.walletStore.CreateWallet(wallet); err != nil {
+	if err := s.walletStore.CreateWallet(ctx, wallet); err != nil {
 		// Surface duplicate address error clearly.
 		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
 			return nil, errors.New("wallet address already registered for this chain")
@@ -58,7 +60,8 @@ func (s *WalletService) AddWallet(userID uint64, chain, address, label string) (
 
 // GetWallets returns all wallets for the given user.
 func (s *WalletService) GetWallets(userID uint64) ([]model.UserWallet, error) {
-	wallets, err := s.walletStore.GetWalletsByUserID(userID)
+	ctx := context.Background()
+	wallets, err := s.walletStore.GetWalletsByUserID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("get wallets: %w", err)
 	}
@@ -70,7 +73,8 @@ func (s *WalletService) GetWallets(userID uint64) ([]model.UserWallet, error) {
 
 // DeleteWallet removes a wallet, verifying ownership via userID.
 func (s *WalletService) DeleteWallet(walletID, userID uint64) error {
-	if err := s.walletStore.DeleteWallet(walletID, userID); err != nil {
+	ctx := context.Background()
+	if err := s.walletStore.DeleteWallet(ctx, walletID, userID); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			return store.ErrNotFound
 		}
@@ -81,14 +85,15 @@ func (s *WalletService) DeleteWallet(walletID, userID uint64) error {
 
 // GetWalletAssets returns assets for a wallet, verifying the wallet belongs to userID.
 func (s *WalletService) GetWalletAssets(walletID, userID uint64) ([]model.UserAsset, error) {
-	wallet, err := s.walletStore.GetWalletByID(walletID)
+	ctx := context.Background()
+	wallet, err := s.walletStore.GetWalletByID(ctx, walletID)
 	if err != nil {
 		return nil, fmt.Errorf("get wallet: %w", err)
 	}
 	if wallet.UserID != userID {
 		return nil, store.ErrNotFound
 	}
-	assets, err := s.walletStore.GetAssetsByWalletID(walletID)
+	assets, err := s.walletStore.GetAssetsByWalletID(ctx, walletID)
 	if err != nil {
 		return nil, fmt.Errorf("get wallet assets: %w", err)
 	}

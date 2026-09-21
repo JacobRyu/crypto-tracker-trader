@@ -45,12 +45,12 @@ func (s *PortfolioAggregationService) GetSummary(ctx context.Context, userID uin
 	defiUSD := new(big.Float)
 
 	// --- Wallet assets ---
-	wallets, err := s.walletStore.GetWalletsByUserID(userID)
+	wallets, err := s.walletStore.GetWalletsByUserID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("aggregation: wallet query: %w", err)
 	}
 	for _, wallet := range wallets {
-		assets, err := s.walletStore.GetAssetsByWalletID(wallet.ID)
+		assets, err := s.walletStore.GetAssetsByWalletID(ctx, wallet.ID)
 		if err != nil {
 			return nil, fmt.Errorf("aggregation: wallet assets: %w", err)
 		}
@@ -62,7 +62,7 @@ func (s *PortfolioAggregationService) GetSummary(ctx context.Context, userID uin
 			sym := strings.ToUpper(asset.Symbol)
 			qty := parseDecimal(asset.Balance)
 			accumulateSymbol(symbolQty, sym, qty)
-			price := s.getPrice(sym)
+			price := s.getPrice(ctx, sym)
 			walletValue.Add(walletValue, new(big.Float).Mul(qty, price))
 		}
 		walletUSD.Add(walletUSD, walletValue)
@@ -75,7 +75,7 @@ func (s *PortfolioAggregationService) GetSummary(ctx context.Context, userID uin
 	}
 
 	// --- Exchange balances ---
-	exBalances, err := s.exchangeStore.GetBalancesByUserID(userID)
+	exBalances, err := s.exchangeStore.GetBalancesByUserID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("aggregation: exchange balances: %w", err)
 	}
@@ -84,7 +84,7 @@ func (s *PortfolioAggregationService) GetSummary(ctx context.Context, userID uin
 	for i := range exBalances {
 		byCredential[exBalances[i].CredentialID] = append(byCredential[exBalances[i].CredentialID], &exBalances[i])
 	}
-	creds, _ := s.exchangeStore.GetCredentialsByUserID(userID)
+	creds, _ := s.exchangeStore.GetCredentialsByUserID(ctx, userID)
 	credExchangeMap := make(map[uint64]string)
 	for _, c := range creds {
 		credExchangeMap[c.ID] = c.Exchange
@@ -97,7 +97,7 @@ func (s *PortfolioAggregationService) GetSummary(ctx context.Context, userID uin
 			lockedQty := parseDecimal(b.LockedBalance)
 			total := new(big.Float).Add(qty, lockedQty)
 			accumulateSymbol(symbolQty, sym, total)
-			price := s.getPrice(sym)
+			price := s.getPrice(ctx, sym)
 			credValue.Add(credValue, new(big.Float).Mul(total, price))
 		}
 		exchangeUSD.Add(exchangeUSD, credValue)
@@ -114,7 +114,7 @@ func (s *PortfolioAggregationService) GetSummary(ctx context.Context, userID uin
 	}
 
 	// --- DeFi positions ---
-	defiPositions, err := s.defiStore.GetPositionsByUserID(userID)
+	defiPositions, err := s.defiStore.GetPositionsByUserID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("aggregation: defi positions: %w", err)
 	}
@@ -136,7 +136,7 @@ func (s *PortfolioAggregationService) GetSummary(ctx context.Context, userID uin
 
 	symbolPositions := make([]model.SymbolPosition, 0, len(symbolQty))
 	for sym, qty := range symbolQty {
-		price := s.getPrice(sym)
+		price := s.getPrice(ctx, sym)
 		valueUSD := new(big.Float).Mul(qty, price)
 		pct := new(big.Float)
 		if totalUSD.Sign() > 0 {
@@ -174,8 +174,8 @@ func (s *PortfolioAggregationService) GetSummary(ctx context.Context, userID uin
 }
 
 // getPrice looks up the latest price, returning 0 if not found.
-func (s *PortfolioAggregationService) getPrice(symbol string) *big.Float {
-	p, err := s.priceStore.GetLatestPrice(symbol)
+func (s *PortfolioAggregationService) getPrice(ctx context.Context, symbol string) *big.Float {
+	p, err := s.priceStore.GetLatestPrice(ctx, symbol)
 	if err != nil || p == nil {
 		return new(big.Float)
 	}

@@ -25,19 +25,19 @@ func (s *PortfolioStore) Close() {
 	log.Printf("PortfolioStore database pool closed")
 }
 
-func (s *PortfolioStore) AddSnapshot(snapshot model.PortfolioSnapshot) error {
-	tx, err := s.db.Begin(context.Background())
+func (s *PortfolioStore) AddSnapshot(ctx context.Context, snapshot model.PortfolioSnapshot) error {
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		if rErr := tx.Rollback(context.Background()); rErr != nil && rErr != pgx.ErrTxClosed {
+		if rErr := tx.Rollback(ctx); rErr != nil && rErr != pgx.ErrTxClosed {
 			log.Printf("Rollback failed: %v", rErr)
 		}
 	}()
 
 	var snapshotID int
-	err = tx.QueryRow(context.Background(),
+	err = tx.QueryRow(ctx,
 		"INSERT INTO portfolio_snapshots (timestamp, total_value) VALUES ($1, $2) RETURNING id",
 		snapshot.Timestamp, snapshot.TotalValue).Scan(&snapshotID)
 	if err != nil {
@@ -45,7 +45,7 @@ func (s *PortfolioStore) AddSnapshot(snapshot model.PortfolioSnapshot) error {
 	}
 
 	for _, asset := range snapshot.Assets {
-		_, err := tx.Exec(context.Background(),
+		_, err := tx.Exec(ctx,
 			"INSERT INTO portfolio_assets (snapshot_id, asset_id, quantity, value) VALUES ($1, $2, $3, $4)",
 			snapshotID, asset.AssetID, asset.Quantity, asset.Value)
 		if err != nil {
@@ -53,11 +53,11 @@ func (s *PortfolioStore) AddSnapshot(snapshot model.PortfolioSnapshot) error {
 		}
 	}
 
-	return tx.Commit(context.Background())
+	return tx.Commit(ctx)
 }
 
-func (s *PortfolioStore) GetHistory() ([]model.PortfolioSnapshot, error) {
-	rows, err := s.db.Query(context.Background(),
+func (s *PortfolioStore) GetHistory(ctx context.Context) ([]model.PortfolioSnapshot, error) {
+	rows, err := s.db.Query(ctx,
 		`SELECT s.id, s.timestamp, s.total_value, a.asset_id, a.quantity, a.value
          FROM portfolio_snapshots s
          JOIN portfolio_assets a ON s.id = a.snapshot_id

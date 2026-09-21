@@ -21,10 +21,10 @@ func NewWalletStore(db *pgxpool.Pool) *WalletStore {
 }
 
 // CreateWallet inserts a new wallet row and sets the generated ID on the struct.
-func (s *WalletStore) CreateWallet(wallet *model.UserWallet) error {
+func (s *WalletStore) CreateWallet(ctx context.Context, wallet *model.UserWallet) error {
 	wallet.CreatedAt = time.Now()
 	wallet.UpdatedAt = time.Now()
-	err := s.db.QueryRow(context.Background(),
+	err := s.db.QueryRow(ctx,
 		`INSERT INTO user_wallets (user_id, chain, address, label, created_at, updated_at)
 		 VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
 		wallet.UserID, wallet.Chain, wallet.Address, wallet.Label,
@@ -37,8 +37,8 @@ func (s *WalletStore) CreateWallet(wallet *model.UserWallet) error {
 }
 
 // GetWalletsByUserID returns all wallets belonging to the given user.
-func (s *WalletStore) GetWalletsByUserID(userID uint64) ([]model.UserWallet, error) {
-	rows, err := s.db.Query(context.Background(),
+func (s *WalletStore) GetWalletsByUserID(ctx context.Context, userID uint64) ([]model.UserWallet, error) {
+	rows, err := s.db.Query(ctx,
 		`SELECT id, user_id, chain, address, label, created_at, updated_at
 		 FROM user_wallets WHERE user_id = $1 ORDER BY created_at DESC`,
 		userID,
@@ -60,9 +60,9 @@ func (s *WalletStore) GetWalletsByUserID(userID uint64) ([]model.UserWallet, err
 }
 
 // GetWalletByID returns a single wallet by its primary key.
-func (s *WalletStore) GetWalletByID(id uint64) (*model.UserWallet, error) {
+func (s *WalletStore) GetWalletByID(ctx context.Context, id uint64) (*model.UserWallet, error) {
 	var w model.UserWallet
-	err := s.db.QueryRow(context.Background(),
+	err := s.db.QueryRow(ctx,
 		`SELECT id, user_id, chain, address, label, created_at, updated_at
 		 FROM user_wallets WHERE id = $1`,
 		id,
@@ -75,8 +75,8 @@ func (s *WalletStore) GetWalletByID(id uint64) (*model.UserWallet, error) {
 
 // DeleteWallet removes a wallet only if it belongs to the given user.
 // Returns an error if the wallet does not exist or does not belong to the user.
-func (s *WalletStore) DeleteWallet(walletID, userID uint64) error {
-	tag, err := s.db.Exec(context.Background(),
+func (s *WalletStore) DeleteWallet(ctx context.Context, walletID, userID uint64) error {
+	tag, err := s.db.Exec(ctx,
 		`DELETE FROM user_wallets WHERE id = $1 AND user_id = $2`,
 		walletID, userID,
 	)
@@ -90,8 +90,8 @@ func (s *WalletStore) DeleteWallet(walletID, userID uint64) error {
 }
 
 // GetAssetsByWalletID returns all token assets for the given wallet.
-func (s *WalletStore) GetAssetsByWalletID(walletID uint64) ([]model.UserAsset, error) {
-	rows, err := s.db.Query(context.Background(),
+func (s *WalletStore) GetAssetsByWalletID(ctx context.Context, walletID uint64) ([]model.UserAsset, error) {
+	rows, err := s.db.Query(ctx,
 		`SELECT id, wallet_id, chain, token_address, symbol, balance, updated_at
 		 FROM user_assets WHERE wallet_id = $1 ORDER BY symbol`,
 		walletID,

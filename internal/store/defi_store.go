@@ -23,7 +23,7 @@ func NewDefiStore(pool *pgxpool.Pool) *DefiStore {
 
 // UpsertPosition inserts or updates a DeFi position.
 // Uniqueness is keyed on (wallet_id, protocol, position_type).
-func (s *DefiStore) UpsertPosition(pos *model.UserDefiPosition) error {
+func (s *DefiStore) UpsertPosition(ctx context.Context, pos *model.UserDefiPosition) error {
 	data, err := json.Marshal(pos.PositionJSON)
 	if err != nil {
 		return fmt.Errorf("defi store: marshalling position json: %w", err)
@@ -35,31 +35,31 @@ func (s *DefiStore) UpsertPosition(pos *model.UserDefiPosition) error {
 			position_json = EXCLUDED.position_json,
 			updated_at    = EXCLUDED.updated_at
 		RETURNING id`
-	return s.pool.QueryRow(context.Background(), q,
+	return s.pool.QueryRow(ctx, q,
 		pos.WalletID, pos.Protocol, pos.PositionType, data, time.Now(),
 	).Scan(&pos.ID)
 }
 
-func (s *DefiStore) GetPositionsByWalletID(walletID uint64) ([]model.UserDefiPosition, error) {
+func (s *DefiStore) GetPositionsByWalletID(ctx context.Context, walletID uint64) ([]model.UserDefiPosition, error) {
 	const q = `
 		SELECT id, wallet_id, protocol, position_type, position_json, updated_at
 		FROM user_defi_positions WHERE wallet_id = $1
 		ORDER BY protocol, position_type`
-	return s.queryPositions(q, walletID)
+	return s.queryPositions(ctx, q, walletID)
 }
 
-func (s *DefiStore) GetPositionsByUserID(userID uint64) ([]model.UserDefiPosition, error) {
+func (s *DefiStore) GetPositionsByUserID(ctx context.Context, userID uint64) ([]model.UserDefiPosition, error) {
 	const q = `
 		SELECT dp.id, dp.wallet_id, dp.protocol, dp.position_type, dp.position_json, dp.updated_at
 		FROM user_defi_positions dp
 		JOIN user_wallets w ON w.id = dp.wallet_id
 		WHERE w.user_id = $1
 		ORDER BY dp.protocol, dp.position_type`
-	return s.queryPositions(q, userID)
+	return s.queryPositions(ctx, q, userID)
 }
 
-func (s *DefiStore) queryPositions(query string, arg interface{}) ([]model.UserDefiPosition, error) {
-	rows, err := s.pool.Query(context.Background(), query, arg)
+func (s *DefiStore) queryPositions(ctx context.Context, query string, arg interface{}) ([]model.UserDefiPosition, error) {
+	rows, err := s.pool.Query(ctx, query, arg)
 	if err != nil {
 		return nil, fmt.Errorf("defi store: query: %w", err)
 	}
