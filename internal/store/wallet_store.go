@@ -8,7 +8,12 @@ import (
 	"crypto-tracker-trader/internal/model"
 
 	"github.com/jackc/pgx/v4/pgxpool"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var walletTracer = otel.Tracer("crypto-tracker-trader/wallet-store")
 
 // WalletStore implements WalletStoreInterface for PostgreSQL.
 type WalletStore struct {
@@ -22,6 +27,15 @@ func NewWalletStore(db *pgxpool.Pool) *WalletStore {
 
 // CreateWallet inserts a new wallet row and sets the generated ID on the struct.
 func (s *WalletStore) CreateWallet(ctx context.Context, wallet *model.UserWallet) error {
+	ctx, span := walletTracer.Start(ctx, "db.user_wallets.insert",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "INSERT"),
+			attribute.String("db.sql.table", "user_wallets"),
+		),
+	)
+	defer span.End()
+
 	wallet.CreatedAt = time.Now()
 	wallet.UpdatedAt = time.Now()
 	err := s.db.QueryRow(ctx,
@@ -38,6 +52,15 @@ func (s *WalletStore) CreateWallet(ctx context.Context, wallet *model.UserWallet
 
 // GetWalletsByUserID returns all wallets belonging to the given user.
 func (s *WalletStore) GetWalletsByUserID(ctx context.Context, userID uint64) ([]model.UserWallet, error) {
+	ctx, span := walletTracer.Start(ctx, "db.user_wallets.select",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "SELECT"),
+			attribute.String("db.sql.table", "user_wallets"),
+		),
+	)
+	defer span.End()
+
 	rows, err := s.db.Query(ctx,
 		`SELECT id, user_id, chain, address, label, created_at, updated_at
 		 FROM user_wallets WHERE user_id = $1 ORDER BY created_at DESC`,
@@ -61,6 +84,15 @@ func (s *WalletStore) GetWalletsByUserID(ctx context.Context, userID uint64) ([]
 
 // GetWalletByID returns a single wallet by its primary key.
 func (s *WalletStore) GetWalletByID(ctx context.Context, id uint64) (*model.UserWallet, error) {
+	ctx, span := walletTracer.Start(ctx, "db.user_wallets.select",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "SELECT"),
+			attribute.String("db.sql.table", "user_wallets"),
+		),
+	)
+	defer span.End()
+
 	var w model.UserWallet
 	err := s.db.QueryRow(ctx,
 		`SELECT id, user_id, chain, address, label, created_at, updated_at
@@ -76,6 +108,15 @@ func (s *WalletStore) GetWalletByID(ctx context.Context, id uint64) (*model.User
 // DeleteWallet removes a wallet only if it belongs to the given user.
 // Returns an error if the wallet does not exist or does not belong to the user.
 func (s *WalletStore) DeleteWallet(ctx context.Context, walletID, userID uint64) error {
+	ctx, span := walletTracer.Start(ctx, "db.user_wallets.delete",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "DELETE"),
+			attribute.String("db.sql.table", "user_wallets"),
+		),
+	)
+	defer span.End()
+
 	tag, err := s.db.Exec(ctx,
 		`DELETE FROM user_wallets WHERE id = $1 AND user_id = $2`,
 		walletID, userID,
@@ -91,6 +132,15 @@ func (s *WalletStore) DeleteWallet(ctx context.Context, walletID, userID uint64)
 
 // GetAssetsByWalletID returns all token assets for the given wallet.
 func (s *WalletStore) GetAssetsByWalletID(ctx context.Context, walletID uint64) ([]model.UserAsset, error) {
+	ctx, span := walletTracer.Start(ctx, "db.user_assets.select",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "SELECT"),
+			attribute.String("db.sql.table", "user_assets"),
+		),
+	)
+	defer span.End()
+
 	rows, err := s.db.Query(ctx,
 		`SELECT id, wallet_id, chain, token_address, symbol, balance, updated_at
 		 FROM user_assets WHERE wallet_id = $1 ORDER BY symbol`,

@@ -9,7 +9,12 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var userTracer = otel.Tracer("crypto-tracker-trader/user-store")
 
 // UserStore implements UserStoreInterface for PostgreSQL.
 type UserStore struct {
@@ -29,6 +34,15 @@ func (s *UserStore) Close() {
 
 // CreateUser inserts a new user, their credential, and auth provider into the database.
 func (s *UserStore) CreateUser(ctx context.Context, user *model.User, credential *model.UserCredential, authProvider *model.UserAuthProvider) error {
+	ctx, span := userTracer.Start(ctx, "db.users.insert",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "INSERT"),
+			attribute.String("db.sql.table", "users"),
+		),
+	)
+	defer span.End()
+
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
@@ -72,6 +86,15 @@ func (s *UserStore) CreateUser(ctx context.Context, user *model.User, credential
 
 // GetUserByUsername retrieves a user and their credential by username.
 func (s *UserStore) GetUserByUsername(ctx context.Context, username string) (*model.User, *model.UserCredential, error) {
+	ctx, span := userTracer.Start(ctx, "db.users.select",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "SELECT"),
+			attribute.String("db.sql.table", "users"),
+		),
+	)
+	defer span.End()
+
 	user := &model.User{}
 	credential := &model.UserCredential{}
 	err := s.db.QueryRow(ctx,
@@ -93,6 +116,15 @@ func (s *UserStore) GetUserByUsername(ctx context.Context, username string) (*mo
 
 // GetUserByEmail retrieves a user and their credential by email.
 func (s *UserStore) GetUserByEmail(ctx context.Context, email string) (*model.User, *model.UserCredential, error) {
+	ctx, span := userTracer.Start(ctx, "db.users.select",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "SELECT"),
+			attribute.String("db.sql.table", "users"),
+		),
+	)
+	defer span.End()
+
 	user := &model.User{}
 	credential := &model.UserCredential{}
 	err := s.db.QueryRow(ctx,
@@ -114,6 +146,15 @@ func (s *UserStore) GetUserByEmail(ctx context.Context, email string) (*model.Us
 
 // GetUserByID retrieves a user and their credential by ID.
 func (s *UserStore) GetUserByID(ctx context.Context, id uint64) (*model.User, *model.UserCredential, error) {
+	ctx, span := userTracer.Start(ctx, "db.users.select",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "SELECT"),
+			attribute.String("db.sql.table", "users"),
+		),
+	)
+	defer span.End()
+
 	user := &model.User{}
 	credential := &model.UserCredential{}
 	err := s.db.QueryRow(ctx,

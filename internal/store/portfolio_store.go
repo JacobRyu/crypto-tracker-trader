@@ -10,7 +10,12 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var portfolioTracer = otel.Tracer("crypto-tracker-trader/portfolio-store")
 
 type PortfolioStore struct {
 	db *pgxpool.Pool
@@ -26,6 +31,15 @@ func (s *PortfolioStore) Close() {
 }
 
 func (s *PortfolioStore) AddSnapshot(ctx context.Context, snapshot model.PortfolioSnapshot) error {
+	ctx, span := portfolioTracer.Start(ctx, "db.portfolio_snapshots.insert",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "INSERT"),
+			attribute.String("db.sql.table", "portfolio_snapshots"),
+		),
+	)
+	defer span.End()
+
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
@@ -57,6 +71,15 @@ func (s *PortfolioStore) AddSnapshot(ctx context.Context, snapshot model.Portfol
 }
 
 func (s *PortfolioStore) GetHistory(ctx context.Context) ([]model.PortfolioSnapshot, error) {
+	ctx, span := portfolioTracer.Start(ctx, "db.portfolio_snapshots.select",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "SELECT"),
+			attribute.String("db.sql.table", "portfolio_snapshots"),
+		),
+	)
+	defer span.End()
+
 	rows, err := s.db.Query(ctx,
 		`SELECT s.id, s.timestamp, s.total_value, a.asset_id, a.quantity, a.value
          FROM portfolio_snapshots s

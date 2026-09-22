@@ -8,7 +8,12 @@ import (
 	"crypto-tracker-trader/internal/model"
 
 	"github.com/jackc/pgx/v4/pgxpool"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var exchangeTracer = otel.Tracer("crypto-tracker-trader/exchange-store")
 
 // ExchangeStore handles persistence for exchange credentials and balances.
 type ExchangeStore struct {
@@ -20,6 +25,15 @@ func NewExchangeStore(pool *pgxpool.Pool) *ExchangeStore {
 }
 
 func (s *ExchangeStore) CreateCredential(ctx context.Context, cred *model.ExchangeCredential) error {
+	ctx, span := exchangeTracer.Start(ctx, "db.exchange_credentials.insert",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "INSERT"),
+			attribute.String("db.sql.table", "exchange_credentials"),
+		),
+	)
+	defer span.End()
+
 	const q = `
 		INSERT INTO exchange_credentials (user_id, exchange, api_key_encrypted, api_secret_encrypted, is_active, created_at)
 		VALUES ($1, $2, $3, $4, TRUE, NOW())
@@ -30,6 +44,15 @@ func (s *ExchangeStore) CreateCredential(ctx context.Context, cred *model.Exchan
 }
 
 func (s *ExchangeStore) GetCredentialsByUserID(ctx context.Context, userID uint64) ([]model.ExchangeCredential, error) {
+	ctx, span := exchangeTracer.Start(ctx, "db.exchange_credentials.select",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "SELECT"),
+			attribute.String("db.sql.table", "exchange_credentials"),
+		),
+	)
+	defer span.End()
+
 	const q = `
 		SELECT id, user_id, exchange, api_key_encrypted, api_secret_encrypted, is_active, created_at
 		FROM exchange_credentials
@@ -53,6 +76,15 @@ func (s *ExchangeStore) GetCredentialsByUserID(ctx context.Context, userID uint6
 }
 
 func (s *ExchangeStore) GetCredentialByID(ctx context.Context, id uint64) (*model.ExchangeCredential, error) {
+	ctx, span := exchangeTracer.Start(ctx, "db.exchange_credentials.select",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "SELECT"),
+			attribute.String("db.sql.table", "exchange_credentials"),
+		),
+	)
+	defer span.End()
+
 	const q = `
 		SELECT id, user_id, exchange, api_key_encrypted, api_secret_encrypted, is_active, created_at
 		FROM exchange_credentials WHERE id = $1`
@@ -67,6 +99,15 @@ func (s *ExchangeStore) GetCredentialByID(ctx context.Context, id uint64) (*mode
 }
 
 func (s *ExchangeStore) GetAllActiveCredentials(ctx context.Context) ([]model.ExchangeCredential, error) {
+	ctx, span := exchangeTracer.Start(ctx, "db.exchange_credentials.select",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "SELECT"),
+			attribute.String("db.sql.table", "exchange_credentials"),
+		),
+	)
+	defer span.End()
+
 	const q = `
 		SELECT id, user_id, exchange, api_key_encrypted, api_secret_encrypted, is_active, created_at
 		FROM exchange_credentials WHERE is_active = TRUE`
@@ -88,6 +129,15 @@ func (s *ExchangeStore) GetAllActiveCredentials(ctx context.Context) ([]model.Ex
 }
 
 func (s *ExchangeStore) DeleteCredential(ctx context.Context, id, userID uint64) error {
+	ctx, span := exchangeTracer.Start(ctx, "db.exchange_credentials.delete",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "DELETE"),
+			attribute.String("db.sql.table", "exchange_credentials"),
+		),
+	)
+	defer span.End()
+
 	const q = `DELETE FROM exchange_credentials WHERE id = $1 AND user_id = $2`
 	tag, err := s.pool.Exec(ctx, q, id, userID)
 	if err != nil {
@@ -101,6 +151,15 @@ func (s *ExchangeStore) DeleteCredential(ctx context.Context, id, userID uint64)
 
 // UpsertBalances inserts or updates exchange balances for a credential.
 func (s *ExchangeStore) UpsertBalances(ctx context.Context, credentialID, userID uint64, balances []model.ExchangeBalance) error {
+	ctx, span := exchangeTracer.Start(ctx, "db.exchange_balances.upsert",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "INSERT"),
+			attribute.String("db.sql.table", "exchange_balances"),
+		),
+	)
+	defer span.End()
+
 	const q = `
 		INSERT INTO exchange_balances (credential_id, user_id, symbol, free_balance, locked_balance, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6)
@@ -121,6 +180,15 @@ func (s *ExchangeStore) UpsertBalances(ctx context.Context, credentialID, userID
 }
 
 func (s *ExchangeStore) GetBalancesByUserID(ctx context.Context, userID uint64) ([]model.ExchangeBalance, error) {
+	ctx, span := exchangeTracer.Start(ctx, "db.exchange_balances.select",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "SELECT"),
+			attribute.String("db.sql.table", "exchange_balances"),
+		),
+	)
+	defer span.End()
+
 	const q = `
 		SELECT id, credential_id, user_id, symbol, free_balance, locked_balance, updated_at
 		FROM exchange_balances WHERE user_id = $1
@@ -143,6 +211,15 @@ func (s *ExchangeStore) GetBalancesByUserID(ctx context.Context, userID uint64) 
 }
 
 func (s *ExchangeStore) GetBalancesByCredentialID(ctx context.Context, credentialID uint64) ([]model.ExchangeBalance, error) {
+	ctx, span := exchangeTracer.Start(ctx, "db.exchange_balances.select",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "SELECT"),
+			attribute.String("db.sql.table", "exchange_balances"),
+		),
+	)
+	defer span.End()
+
 	const q = `
 		SELECT id, credential_id, user_id, symbol, free_balance, locked_balance, updated_at
 		FROM exchange_balances WHERE credential_id = $1

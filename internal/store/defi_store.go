@@ -9,8 +9,13 @@ import (
 	"crypto-tracker-trader/internal/model"
 
 	"github.com/jackc/pgx/v4/pgxpool"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"gorm.io/datatypes"
 )
+
+var defiTracer = otel.Tracer("crypto-tracker-trader/defi-store")
 
 // DefiStore handles persistence for user DeFi positions.
 type DefiStore struct {
@@ -24,6 +29,15 @@ func NewDefiStore(pool *pgxpool.Pool) *DefiStore {
 // UpsertPosition inserts or updates a DeFi position.
 // Uniqueness is keyed on (wallet_id, protocol, position_type).
 func (s *DefiStore) UpsertPosition(ctx context.Context, pos *model.UserDefiPosition) error {
+	ctx, span := defiTracer.Start(ctx, "db.user_defi_positions.upsert",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "INSERT"),
+			attribute.String("db.sql.table", "user_defi_positions"),
+		),
+	)
+	defer span.End()
+
 	data, err := json.Marshal(pos.PositionJSON)
 	if err != nil {
 		return fmt.Errorf("defi store: marshalling position json: %w", err)
@@ -41,6 +55,15 @@ func (s *DefiStore) UpsertPosition(ctx context.Context, pos *model.UserDefiPosit
 }
 
 func (s *DefiStore) GetPositionsByWalletID(ctx context.Context, walletID uint64) ([]model.UserDefiPosition, error) {
+	ctx, span := defiTracer.Start(ctx, "db.user_defi_positions.select",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "SELECT"),
+			attribute.String("db.sql.table", "user_defi_positions"),
+		),
+	)
+	defer span.End()
+
 	const q = `
 		SELECT id, wallet_id, protocol, position_type, position_json, updated_at
 		FROM user_defi_positions WHERE wallet_id = $1
@@ -49,6 +72,15 @@ func (s *DefiStore) GetPositionsByWalletID(ctx context.Context, walletID uint64)
 }
 
 func (s *DefiStore) GetPositionsByUserID(ctx context.Context, userID uint64) ([]model.UserDefiPosition, error) {
+	ctx, span := defiTracer.Start(ctx, "db.user_defi_positions.select",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "SELECT"),
+			attribute.String("db.sql.table", "user_defi_positions"),
+		),
+	)
+	defer span.End()
+
 	const q = `
 		SELECT dp.id, dp.wallet_id, dp.protocol, dp.position_type, dp.position_json, dp.updated_at
 		FROM user_defi_positions dp

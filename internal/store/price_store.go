@@ -9,7 +9,12 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var priceTracer = otel.Tracer("crypto-tracker-trader/price-store")
 
 // PriceStore implements PriceStoreInterface for PostgreSQL.
 type PriceStore struct {
@@ -23,6 +28,15 @@ func NewPriceStore(db *pgxpool.Pool) *PriceStore {
 
 // SavePrice inserts a new price record for the given symbol.
 func (s *PriceStore) SavePrice(ctx context.Context, symbol, priceUSD, source string) error {
+	ctx, span := priceTracer.Start(ctx, "db.asset_prices.insert",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "INSERT"),
+			attribute.String("db.sql.table", "asset_prices"),
+		),
+	)
+	defer span.End()
+
 	_, err := s.db.Exec(ctx,
 		`INSERT INTO asset_prices (symbol, price_usd, source) VALUES ($1, $2, $3)`,
 		strings.ToUpper(symbol), priceUSD, source,
@@ -36,6 +50,15 @@ func (s *PriceStore) SavePrice(ctx context.Context, symbol, priceUSD, source str
 // GetLatestPrice returns the most recently saved price for the given symbol.
 // Returns ErrNotFound if no price record exists.
 func (s *PriceStore) GetLatestPrice(ctx context.Context, symbol string) (*model.AssetPrice, error) {
+	ctx, span := priceTracer.Start(ctx, "db.asset_prices.select",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "SELECT"),
+			attribute.String("db.sql.table", "asset_prices"),
+		),
+	)
+	defer span.End()
+
 	var p model.AssetPrice
 	err := s.db.QueryRow(ctx,
 		`SELECT id, symbol, price_usd, source, fetched_at
@@ -57,6 +80,15 @@ func (s *PriceStore) GetLatestPrice(ctx context.Context, symbol string) (*model.
 // GetPriceHistory returns the last `limit` price records for the given symbol,
 // newest first.
 func (s *PriceStore) GetPriceHistory(ctx context.Context, symbol string, limit int) ([]model.AssetPrice, error) {
+	ctx, span := priceTracer.Start(ctx, "db.asset_prices.select",
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.operation", "SELECT"),
+			attribute.String("db.sql.table", "asset_prices"),
+		),
+	)
+	defer span.End()
+
 	if limit <= 0 {
 		limit = 100
 	}
