@@ -106,6 +106,7 @@ exchange_credentials(user_id, exchange UNIQUE)    … 暗号化 API キー
 exchange_balances(credential_id, symbol UNIQUE)   … 取引所残高
 asset_prices(symbol, fetched_at)                  … 価格履歴
 portfolio_snapshots(user_id) / portfolio_assets   … 時系列スナップショット
+wallets(user_id, address UNIQUE)                  … ウォレット（0003で作成）
 ```
 
 ### 2.5 最終 API サーフェス（目標）
@@ -153,27 +154,35 @@ internal/
   api/handler.go                      … ルート登録・auth・blockchain・portfolio
   api/wallet_handler.go / price_handler.go / exchange_handler.go
   api/defi_handler.go / portfolio_summary_handler.go
-  api/middleware/auth.go              … Bearer JWT 検証
+  api/middleware/auth.go              … Bearer JWT 検証 + 手動span
   auth/jwt.go                         … HS256 トークン generate/validate
-  client/coingecko/client.go          … PriceFetcher 実装（レート制限・指数バックオフ）
+  cache/redis.go                      … Redis クライアント（go-redis/v9）
+  client/coingecko/client.go          … PriceFetcher 実装（レート制限・指数バックオフ）+ 手動span
   client/exchange/interface.go        … ExchangeClient 抽象
-  client/exchange/binance/client.go   … Binance v3（HMAC-SHA256）
+  client/exchange/binance/client.go   … Binance v3（HMAC-SHA256）+ 手動span
   client/defi/interface.go            … DefiProtocolClient 抽象
-  client/defi/uniswap/client.go       … Uniswap V3 NFPM（eth_call）
+  client/defi/uniswap/client.go       … Uniswap V3 NFPM（eth_call）+ 手動span
   config/config.go                    … 環境変数ロード（godotenv）
   crypto/aes.go                       … AES-256-GCM 鍵暗号化
+  event/kafka.go                      … Kafka Producer/Consumer + 手動span
   model/                              … データモデル（金額は文字列保持）
+  metrics/prometheus.go               … Prometheus メトリクス定義
   service/interfaces.go               … コンシューマー側インターフェース
-  service/*_service.go                … 業務ロジック + ticker バックグラウンド同期
+  service/*_service.go                … 業務ロジック + ticker バックグラウンド同期 + 手動span
   store/store.go                      … プロデューサー側インターフェース
   store/user_store.go / wallet_store.go / price_store.go
   store/exchange_store.go / defi_store.go / portfolio_store.go
-  store/mock_*.go                     … testify モック
+  store/mock_*.go                     … testify モック + 手動span
   telemetry/telemetry.go              … OTel SDK 初期化（OTLP gRPC exporter）
 deployments/migrations/0001..0007     … .up/.down ペア（0003以降）
 deployments/k8s/otel-collector.yaml   … OTel Collector（Kubernetes）
 deployments/k8s/tempo.yaml            … Grafana Tempo（Kubernetes）
 deployments/k8s/grafana-datasources.yaml … Grafana データソース設定
+deployments/k8s/grafana-dashboards.yaml … Grafana ダッシュボード設定
+deployments/k8s/redis-exporter.yaml   … Redis Exporter
+deployments/k8s/kafka-exporter.yaml   … Kafka Exporter
+deployments/k8s/postgres-exporter.yaml … PostgreSQL Exporter（ConfigMap参照）
+deployments/k8s/migration.yaml        … DB マイグレーション Job
 ```
 
 ### 3.3 実装済み API エンドポイント（`handler.go:157` の `RegisterRoutes` より）
@@ -215,9 +224,9 @@ deployments/k8s/grafana-datasources.yaml … Grafana データソース設定
 
 | ジョブ | 間隔（デフォルト） | 動作 |
 |--------|------------------|------|
-| 価格同期 `priceService.StartSync` | 60 秒 | 起動直後に 1 回 + tick ごとに `FetchAndSave` |
-| 取引所残高同期 `exchangeService.StartSync` | 300 秒 | 全有効クレデンシャルの残高を再取得・upsert |
-| DeFi 同期 `defiService.StartSync` | 900 秒 | 起動時・定期実行するが **`runSync` はスタブ**（下記 3.5 参照） |
+| 価格同期 `priceService.StartSync` | 60 秒 | 起動直後に 1 回 + tick ごとに `FetchAndSave` + 手動span |
+| 取引所残高同期 `exchangeService.StartSync` | 300 秒 | 全有効クレデンシャルの残高を再取得・upsert + 手動span |
+| DeFi 同期 `defiService.StartSync` | 900 秒 | 起動時・定期実行するが **`runSync` はスタブ**（下記 3.5 参照）+ 手動span |
 
 ### 3.5 未実装・部分実装のギャップ
 
@@ -308,8 +317,13 @@ curl -s http://localhost:8080/metrics
 |------|------|
 | SDK 初期化 | `internal/telemetry/telemetry.go` - OTLP gRPC exporter、BatchSpanProcessor（5s timeout） |
 | HTTP インストルメンテーション | `handler.go:160` - `otelgin.Middleware("crypto-tracker-trader")` で全ルート自動トレース |
-| ストレージ層トレース | `wallet_store.go` / `user_store.go` / `defi_store.go` / `portfolio_store.go` - 手動 span 付与 |
-| Uniswap クライアント | `client/defi/uniswap/client.go` - 手動 span 付与 |
+| 認証ミドルウェア | `middleware/auth.go` - 手動span（auth.validate_token） |
+| 外部クライアント | `coingecko/client.go` / `binance/client.go` / `uniswap/client.go` - 手動span |
+| ブロックチェーン | `blockchain_data_fetcher_service.go` - 手動span（blockchain.fetch_eth_balance） |
+| サービス層 | 全サービスに手動span（price_service, exchange_service, defi_sync_service, user_service, portfolio_aggregation_service） |
+| ストレージ層 | 全ストアに手動span（db.<table>.<operation） |
+| バックグラウンドワーカー | tickerループにspan（background.price_sync, background.exchange_sync, background.defi_sync） |
+| Kafka | `event/kafka.go` - PublishPriceEventにspan（kafka.publish_price_event） |
 | OTel Collector | `deployments/k8s/otel-collector.yaml` - OTLP受信 → Tempo + Prometheus エクスポート |
 | Tempo | `deployments/k8s/tempo.yaml` - `grafana/tempo:2.6.1`、local storage、NodePort 30320 |
 | Grafana | `deployments/k8s/grafana-datasources.yaml` - Tempo データソース自動設定 |
@@ -480,3 +494,24 @@ Tempo ← HTTP ← Grafana:3000（探索・可視化）
 | `PROMETHEUS_ENABLED` | | `true` | Prometheus メトリクス有効化 |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | | `otel-collector:4317` | OTLP gRPC エクサポーターエンドポイント |
 | `ENVIRONMENT` | | `development` | `deployment.environment` リソース属性 |
+
+---
+
+## 付録: Kubernetes マニフェスト一覧
+
+| ファイル | 説明 |
+|---------|------|
+| `deployments/k8s/postgres.yaml` | PostgreSQL 17 + db-config ConfigMap |
+| `deployments/k8s/redis.yaml` | Redis 7 |
+| `deployments/k8s/kafka.yaml` | Kafka (KRaft mode) |
+| `deployments/k8s/prometheus.yaml` | Prometheus |
+| `deployments/k8s/grafana.yaml` | Grafana + ダッシュボードボリューム |
+| `deployments/k8s/grafana-datasources.yaml` | Grafana データソース（Prometheus + Tempo） |
+| `deployments/k8s/grafana-dashboards.yaml` | Grafana ダッシュボード設定 |
+| `deployments/k8s/redis-exporter.yaml` | Redis Exporter (oliver006/redis_exporter) |
+| `deployments/k8s/kafka-exporter.yaml` | Kafka Exporter (danielqsj/kafka-exporter) |
+| `deployments/k8s/postgres-exporter.yaml` | PostgreSQL Exporter (ConfigMap参照) |
+| `deployments/k8s/otel-collector.yaml` | OTel Collector (OTLP → Tempo + Prometheus) |
+| `deployments/k8s/tempo.yaml` | Grafana Tempo (local storage) |
+| `deployments/k8s/migration.yaml` | DB マイグレーション Job |
+| `deployments/k8s/app.yaml` | アプリケーション Deployment + Service |
