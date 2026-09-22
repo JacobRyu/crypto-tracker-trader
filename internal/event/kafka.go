@@ -7,6 +7,9 @@ import (
 	"log"
 
 	"github.com/segmentio/kafka-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type PriceEvent struct {
@@ -15,6 +18,8 @@ type PriceEvent struct {
 	Source    string `json:"source"`
 	Timestamp int64  `json:"timestamp"`
 }
+
+var tracer = otel.Tracer("crypto-tracker-trader/kafka")
 
 type KafkaProducer struct {
 	writer *kafka.Writer
@@ -30,8 +35,18 @@ func NewKafkaProducer(broker, topic string) *KafkaProducer {
 }
 
 func (p *KafkaProducer) PublishPriceEvent(ctx context.Context, event PriceEvent) error {
+	ctx, span := tracer.Start(ctx, "kafka.publish_price_event",
+		trace.WithAttributes(
+			attribute.String("messaging.system", "kafka"),
+			attribute.String("messaging.destination", "price-events"),
+			attribute.String("messaging.kafka.key", event.Symbol),
+		),
+	)
+	defer span.End()
+
 	data, err := json.Marshal(event)
 	if err != nil {
+		span.RecordError(err)
 		return fmt.Errorf("failed to marshal price event: %w", err)
 	}
 

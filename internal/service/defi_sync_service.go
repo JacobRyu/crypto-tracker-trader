@@ -89,7 +89,13 @@ func (s *DefiSyncService) StartSync(ctx context.Context, interval time.Duration)
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				s.runSync(ctx)
+				syncCtx, span := tracer.Start(context.Background(), "background.defi_sync",
+					trace.WithAttributes(
+						attribute.Int("sync.interval_seconds", int(interval.Seconds())),
+					),
+				)
+				s.runSync(syncCtx)
+				span.End()
 			}
 		}
 	}()

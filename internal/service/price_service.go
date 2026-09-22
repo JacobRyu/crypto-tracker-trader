@@ -132,9 +132,16 @@ func (s *PriceService) StartSync(ctx context.Context, symbols []string, interval
 				log.Println("PriceService: background sync stopped")
 				return
 			case <-ticker.C:
-				if err := s.FetchAndSave(ctx, symbols); err != nil {
-					log.Printf("PriceService: sync error: %v", err)
+				syncCtx, span := tracer.Start(context.Background(), "background.price_sync",
+					trace.WithAttributes(
+						attribute.Int("symbol.count", len(symbols)),
+						attribute.Int("sync.interval_seconds", int(interval.Seconds())),
+					),
+				)
+				if err := s.FetchAndSave(syncCtx, symbols); err != nil {
+					span.RecordError(err)
 				}
+				span.End()
 			}
 		}
 	}()
