@@ -69,6 +69,14 @@
 │  internal/cache/redis.go    … Redis クライアント（go-redis/v9）       │
 │  internal/event/kafka.go    … Kafka Producer/Consumer（kafka-go）   │
 │  internal/metrics/prometheus.go … Prometheus メトリクス定義           │
+│  internal/telemetry/telemetry.go … OTel SDK 初期化（OTLP gRPC）      │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                    可観測性パイプライン（Kubernetes）                    │
+│  otel-collector:4317 … OTLP受信（gRPC/HTTP）→ Tempo + Prometheus    │
+│  tempo:3200          … トレース保存（local backend）                  │
+│  grafana:3000        … ダッシュボード（Prometheus + Tempo DS）        │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -161,7 +169,11 @@ internal/
   store/user_store.go / wallet_store.go / price_store.go
   store/exchange_store.go / defi_store.go / portfolio_store.go
   store/mock_*.go                     … testify モック
+  telemetry/telemetry.go              … OTel SDK 初期化（OTLP gRPC exporter）
 deployments/migrations/0001..0007     … .up/.down ペア（0003以降）
+deployments/k8s/otel-collector.yaml   … OTel Collector（Kubernetes）
+deployments/k8s/tempo.yaml            … Grafana Tempo（Kubernetes）
+deployments/k8s/grafana-datasources.yaml … Grafana データソース設定
 ```
 
 ### 3.3 実装済み API エンドポイント（`handler.go:157` の `RegisterRoutes` より）
@@ -289,6 +301,42 @@ curl -s http://localhost:8080/metrics
 #       - targets: ['localhost:8080']
 #     metrics_path: '/metrics'
 ```
+
+#### OpenTelemetry / Tempo トレーシング
+
+| 項目 | 状態 |
+|------|------|
+| SDK 初期化 | `internal/telemetry/telemetry.go` - OTLP gRPC exporter、BatchSpanProcessor（5s timeout） |
+| HTTP インストルメンテーション | `handler.go:160` - `otelgin.Middleware("crypto-tracker-trader")` で全ルート自動トレース |
+| ストレージ層トレース | `wallet_store.go` / `user_store.go` / `defi_store.go` / `portfolio_store.go` - 手動 span 付与 |
+| Uniswap クライアント | `client/defi/uniswap/client.go` - 手動 span 付与 |
+| OTel Collector | `deployments/k8s/otel-collector.yaml` - OTLP受信 → Tempo + Prometheus エクスポート |
+| Tempo | `deployments/k8s/tempo.yaml` - `grafana/tempo:2.6.1`、local storage、NodePort 30320 |
+| Grafana | `deployments/k8s/grafana-datasources.yaml` - Tempo データソース自動設定 |
+| テスト | `go vet` パス、全テストパス（store 層 DB 依存テスト除く） |
+
+**トレース可視化方法:**
+
+1. Grafana にアクセス（`http://<node-ip>:3000`）
+2. 左メニュー → Explore → Tempo データソースを選択
+3. Service Name `crypto-tracker-trader` で検索
+4. トレースをクリックするとリクエストフロー全体（HTTP → handler → service → store）が表示される
+5. Tempo NodePort: `http://<node-ip>:30320`（API 直接アクセス可）
+
+**データフロー:**
+
+```
+アプリ → OTLP gRPC → otel-collector:4317 → Tempo:4317
+                                         → Prometheus:8889（メトリクス）
+Tempo ← HTTP ← Grafana:3000（探索・可視化）
+```
+
+**環境変数:**
+
+| 変数 | 必須 | デフォルト | 説明 |
+|------|------|-----------|------|
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | | `otel-collector:4317` | OTLP gRPC エクサポーターエンドポイント |
+| `ENVIRONMENT` | | `development` | `deployment.environment` リソース属性 |
 
 ---
 
@@ -430,3 +478,5 @@ curl -s http://localhost:8080/metrics
 | `KAFKA_TOPIC_EVENTS` | | `app-events` | アプリイベント Topic |
 | `KAFKA_CONSUMER_GROUP` | | `crypto-tracker` | コンシューマーグループ ID |
 | `PROMETHEUS_ENABLED` | | `true` | Prometheus メトリクス有効化 |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | | `otel-collector:4317` | OTLP gRPC エクサポーターエンドポイント |
+| `ENVIRONMENT` | | `development` | `deployment.environment` リソース属性 |
