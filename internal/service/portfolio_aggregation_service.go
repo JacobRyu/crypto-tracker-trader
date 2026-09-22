@@ -9,6 +9,9 @@ import (
 
 	"crypto-tracker-trader/internal/model"
 	"crypto-tracker-trader/internal/store"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // PortfolioAggregationService computes the unified portfolio view for a user.
@@ -36,6 +39,13 @@ func NewPortfolioAggregationService(
 
 // GetSummary aggregates all sources and returns a portfolio summary.
 func (s *PortfolioAggregationService) GetSummary(ctx context.Context, userID uint64) (*model.PortfolioSummary, error) {
+	ctx, span := tracer.Start(ctx, "portfolio_aggregation_service.GetSummary",
+		trace.WithAttributes(
+			attribute.Int64("user.id", int64(userID)),
+		),
+	)
+	defer span.End()
+
 	// symbolQty accumulates total quantity per symbol (raw, unscaled for now)
 	symbolQty := make(map[string]*big.Float)
 	var sourceBreakdowns []model.SourceBreakdown

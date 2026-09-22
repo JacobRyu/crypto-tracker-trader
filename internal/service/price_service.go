@@ -10,6 +10,9 @@ import (
 	"crypto-tracker-trader/internal/metrics"
 	"crypto-tracker-trader/internal/model"
 	"crypto-tracker-trader/internal/store"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const defaultPriceSyncInterval = 60 * time.Second
@@ -34,6 +37,14 @@ func NewPriceService(fetcher PriceFetcher, priceStore store.PriceStoreInterface,
 
 // FetchAndSave fetches current prices for the given symbols and persists them.
 func (s *PriceService) FetchAndSave(ctx context.Context, symbols []string) error {
+	ctx, span := tracer.Start(ctx, "price_service.FetchAndSave",
+		trace.WithAttributes(
+			attribute.Int("symbol.count", len(symbols)),
+			attribute.String("source", s.source),
+		),
+	)
+	defer span.End()
+
 	prices, err := s.fetcher.FetchPrices(ctx, symbols)
 	if err != nil {
 		return fmt.Errorf("fetch prices: %w", err)
@@ -65,6 +76,13 @@ func (s *PriceService) FetchAndSave(ctx context.Context, symbols []string) error
 
 // GetLatestPrice returns the most recent price for the given symbol.
 func (s *PriceService) GetLatestPrice(ctx context.Context, symbol string) (*model.AssetPrice, error) {
+	ctx, span := tracer.Start(ctx, "price_service.GetLatestPrice",
+		trace.WithAttributes(
+			attribute.String("symbol", symbol),
+		),
+	)
+	defer span.End()
+
 	price, err := s.priceStore.GetLatestPrice(ctx, symbol)
 	if err != nil {
 		return nil, fmt.Errorf("get latest price: %w", err)
@@ -74,6 +92,14 @@ func (s *PriceService) GetLatestPrice(ctx context.Context, symbol string) (*mode
 
 // GetPriceHistory returns recent price records for the given symbol.
 func (s *PriceService) GetPriceHistory(ctx context.Context, symbol string, limit int) ([]model.AssetPrice, error) {
+	ctx, span := tracer.Start(ctx, "price_service.GetPriceHistory",
+		trace.WithAttributes(
+			attribute.String("symbol", symbol),
+			attribute.Int("limit", limit),
+		),
+	)
+	defer span.End()
+
 	prices, err := s.priceStore.GetPriceHistory(ctx, symbol, limit)
 	if err != nil {
 		return nil, fmt.Errorf("get price history: %w", err)

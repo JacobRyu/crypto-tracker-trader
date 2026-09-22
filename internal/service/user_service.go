@@ -7,6 +7,8 @@ import (
 
 	"crypto-tracker-trader/internal/model"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -31,6 +33,14 @@ func NewUserService(us UserStoreInterface) *UserService {
 
 // RegisterUser registers a new user.
 func (s *UserService) RegisterUser(ctx context.Context, username, email, password string) (*model.User, error) {
+	ctx, span := tracer.Start(ctx, "user_service.RegisterUser",
+		trace.WithAttributes(
+			attribute.String("user.username", username),
+			attribute.String("user.email", email),
+		),
+	)
+	defer span.End()
+
 	// Check if user already exists
 	existingUser, _, err := s.userStore.GetUserByUsername(ctx, username)
 	if err != nil {
@@ -80,6 +90,13 @@ func (s *UserService) RegisterUser(ctx context.Context, username, email, passwor
 
 // LoginUser authenticates a user.
 func (s *UserService) LoginUser(ctx context.Context, email, password string) (*model.User, error) {
+	ctx, span := tracer.Start(ctx, "user_service.LoginUser",
+		trace.WithAttributes(
+			attribute.String("user.email", email),
+		),
+	)
+	defer span.End()
+
 	user, credential, err := s.userStore.GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve user: %w", err)

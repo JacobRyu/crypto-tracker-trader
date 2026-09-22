@@ -12,6 +12,9 @@ import (
 	appCrypto "crypto-tracker-trader/internal/crypto"
 	"crypto-tracker-trader/internal/model"
 	"crypto-tracker-trader/internal/store"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // ExchangeClientFactory creates an ExchangeClient for the given exchange name and credentials.
@@ -50,6 +53,14 @@ func NewExchangeServiceWithFactory(s store.ExchangeStoreInterface, encryptionKey
 
 // AddCredential encrypts the API credentials and persists them.
 func (s *ExchangeService) AddCredential(ctx context.Context, userID uint64, exchangeName, apiKey, apiSecret string) (*model.ExchangeCredential, error) {
+	ctx, span := tracer.Start(ctx, "exchange_service.AddCredential",
+		trace.WithAttributes(
+			attribute.Int64("user.id", int64(userID)),
+			attribute.String("exchange.name", exchangeName),
+		),
+	)
+	defer span.End()
+
 	exchangeName = strings.ToLower(exchangeName)
 	if exchangeName == "" || apiKey == "" || apiSecret == "" {
 		return nil, fmt.Errorf("exchange, api_key and api_secret are required")
@@ -102,6 +113,13 @@ func (s *ExchangeService) DeleteCredential(ctx context.Context, credentialID, us
 
 // SyncBalances fetches live balances for the given credential and upserts them.
 func (s *ExchangeService) SyncBalances(ctx context.Context, credentialID uint64) ([]model.ExchangeBalance, error) {
+	ctx, span := tracer.Start(ctx, "exchange_service.SyncBalances",
+		trace.WithAttributes(
+			attribute.Int64("credential.id", int64(credentialID)),
+		),
+	)
+	defer span.End()
+
 	cred, err := s.store.GetCredentialByID(ctx, credentialID)
 	if err != nil {
 		return nil, fmt.Errorf("exchange service: loading credential: %w", err)

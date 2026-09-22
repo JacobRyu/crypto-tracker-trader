@@ -12,6 +12,8 @@ import (
 	"crypto-tracker-trader/internal/store"
 
 	"github.com/ethereum/go-ethereum/common"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"gorm.io/datatypes"
 )
 
@@ -33,6 +35,15 @@ func NewDefiSyncService(ds store.DefiStoreInterface, ws store.WalletStoreInterfa
 
 // SyncPositions fetches and saves DeFi positions for a single wallet.
 func (s *DefiSyncService) SyncPositions(ctx context.Context, walletID uint64, address common.Address) error {
+	ctx, span := tracer.Start(ctx, "defi_sync_service.SyncPositions",
+		trace.WithAttributes(
+			attribute.Int64("wallet.id", int64(walletID)),
+			attribute.String("wallet.address", address.Hex()),
+			attribute.Int("protocol.count", len(s.protocols)),
+		),
+	)
+	defer span.End()
+
 	for _, proto := range s.protocols {
 		positions, err := proto.GetPositions(ctx, address)
 		if err != nil {
