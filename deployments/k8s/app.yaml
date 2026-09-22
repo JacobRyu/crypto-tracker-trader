@@ -84,6 +84,10 @@ spec:
                   key: KAFKA_TOPIC_PRICES
             - name: PROMETHEUS_ENABLED
               value: "true"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "otel-collector:4317"
+            - name: ENVIRONMENT
+              value: "development"
           readinessProbe:
             httpGet:
               path: /health
