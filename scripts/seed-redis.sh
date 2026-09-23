@@ -5,16 +5,25 @@
 set -e
 
 NAMESPACE="${NAMESPACE:-ctt-dev}"
-REDIS_POD="${REDIS_POD:-redis}"
 
 echo "=== Redis テストデータ生成 ==="
-echo "対象: ${REDIS_POD} (${NAMESPACE})"
+echo "名前空間: ${NAMESPACE}"
+echo ""
+
+# Redisポッド名を取得
+REDIS_POD=$(kubectl get pods -n "$NAMESPACE" -l app=redis -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+if [ -z "$REDIS_POD" ]; then
+  echo "エラー: Redisポッドが見つかりません"
+  echo "Podが起動していることを確認してください: kubectl get pods -n $NAMESPACE"
+  exit 1
+fi
+
+echo "対象ポッド: ${REDIS_POD}"
 echo ""
 
 # Redis接続テスト
 if ! kubectl exec -n "$NAMESPACE" "$REDIS_POD" -- redis-cli ping > /dev/null 2>&1; then
   echo "エラー: Redisに接続できません"
-  echo "Podが起動していることを確認してください: kubectl get pods -n $NAMESPACE"
   exit 1
 fi
 
