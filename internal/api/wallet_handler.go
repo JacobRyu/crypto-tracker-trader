@@ -114,12 +114,3 @@ func (a *API) ListWalletAssets(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, assets)
 }
-
-func containsAny(s string, substrs ...string) bool {
-	for _, sub := range substrs {
-		if strings.Contains(s, sub) {
-			return true
-		}
-	}
-	return false
-}

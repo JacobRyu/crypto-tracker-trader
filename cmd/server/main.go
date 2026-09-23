@@ -76,7 +76,7 @@ func main() {
 			log.Printf("Warning: Redis connection failed: %v", redisErr)
 		} else {
 			log.Println("Redis connected successfully")
-			defer redisClient.Close()
+			defer redisClient.Close() //nolint:errcheck
 		}
 	}
 
@@ -85,7 +85,7 @@ func main() {
 	if cfg.KafkaBroker != "" {
 		kafkaProducer = event.NewKafkaProducer(cfg.KafkaBroker, cfg.KafkaTopicPrices)
 		log.Println("Kafka producer initialized")
-		defer kafkaProducer.Close()
+		defer kafkaProducer.Close() //nolint:errcheck
 	}
 
 	// Stores.

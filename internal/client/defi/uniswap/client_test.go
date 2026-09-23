@@ -32,12 +32,6 @@ func makeWord(v *big.Int) []byte {
 	return b
 }
 
-func makeAddressWord(addr common.Address) []byte {
-	b := make([]byte, 32)
-	copy(b[12:], addr.Bytes())
-	return b
-}
-
 func TestGetPositions_NoNFTs(t *testing.T) {
 	eth := new(mockEthCaller)
 	c := New(eth)

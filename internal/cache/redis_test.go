@@ -13,7 +13,7 @@ func TestRedisClient_SetGet(t *testing.T) {
 	if err != nil {
 		t.Skip("Redis not available, skipping test")
 	}
-	defer client.Close()
+	defer client.Close() //nolint:errcheck
 
 	ctx := context.Background()
 	err = client.Set(ctx, "test:key", "test-value", 10*time.Second)
@@ -29,7 +29,7 @@ func TestRedisClient_Del(t *testing.T) {
 	if err != nil {
 		t.Skip("Redis not available, skipping test")
 	}
-	defer client.Close()
+	defer client.Close() //nolint:errcheck
 
 	ctx := context.Background()
 	err = client.Set(ctx, "test:del-key", "to-delete", 10*time.Second)

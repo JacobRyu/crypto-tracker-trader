@@ -80,7 +80,7 @@ func (c *Client) GetBalances(ctx context.Context) ([]exchange.Balance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("binance: HTTP request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK {
 		var apiErr struct {
@@ -139,7 +139,7 @@ func (c *Client) GetTradeHistory(ctx context.Context, symbol string, since time.
 	if err != nil {
 		return nil, fmt.Errorf("binance: HTTP request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK {
 		var apiErr struct {

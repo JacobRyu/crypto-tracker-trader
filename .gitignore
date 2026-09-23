@@ -7,7 +7,7 @@
 *.dll
 *.so
 *.dylib
-server
+/server
 bin/
 
 # Test binary, built with `go test -c`

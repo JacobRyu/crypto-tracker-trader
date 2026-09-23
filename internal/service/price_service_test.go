@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"crypto-tracker-trader/internal/model"
-	"crypto-tracker-trader/internal/store"
-
 	storemod "crypto-tracker-trader/internal/store"
 
 	"github.com/stretchr/testify/assert"
@@ -100,10 +98,10 @@ func TestPriceService_GetLatestPrice_NotFound(t *testing.T) {
 	ms := new(storemod.MockPriceStore)
 	svc := newTestPriceService(mf, ms)
 
-	ms.On("GetLatestPrice", mock.Anything, "UNKNOWN").Return(nil, store.ErrNotFound)
+	ms.On("GetLatestPrice", mock.Anything, "UNKNOWN").Return(nil, storemod.ErrNotFound)
 
 	_, err := svc.GetLatestPrice(context.Background(), "UNKNOWN")
-	assert.ErrorIs(t, err, store.ErrNotFound)
+	assert.ErrorIs(t, err, storemod.ErrNotFound)
 }
 
 func TestPriceService_GetPriceHistory_EmptyBecomesSlice(t *testing.T) {

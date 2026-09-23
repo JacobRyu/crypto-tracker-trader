@@ -105,7 +105,7 @@ func (c *Client) FetchPrices(ctx context.Context, symbols []string) (map[string]
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 	c.lastRequest = time.Now()
 
 	body, err := io.ReadAll(resp.Body)

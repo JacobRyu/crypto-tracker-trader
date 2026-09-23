@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"crypto-tracker-trader/internal/model"
-	"crypto-tracker-trader/internal/store"
-
 	storemod "crypto-tracker-trader/internal/store"
 
 	"github.com/stretchr/testify/assert"
@@ -99,10 +97,10 @@ func TestWalletService_DeleteWallet(t *testing.T) {
 
 	t.Run("not found propagates ErrNotFound", func(t *testing.T) {
 		ms := new(storemod.MockWalletStore)
-		ms.On("DeleteWallet", mock.Anything, uint64(99), uint64(1)).Return(store.ErrNotFound)
+		ms.On("DeleteWallet", mock.Anything, uint64(99), uint64(1)).Return(storemod.ErrNotFound)
 		svc := newWalletService(ms)
 		err := svc.DeleteWallet(context.Background(), 99, 1)
-		assert.ErrorIs(t, err, store.ErrNotFound)
+		assert.ErrorIs(t, err, storemod.ErrNotFound)
 	})
 }
 
@@ -126,7 +124,7 @@ func TestWalletService_GetWalletAssets(t *testing.T) {
 		ms.On("GetWalletByID", mock.Anything, uint64(2)).Return(wallet, nil)
 		svc := newWalletService(ms)
 		_, err := svc.GetWalletAssets(context.Background(), 2, 1)
-		assert.ErrorIs(t, err, store.ErrNotFound)
+		assert.ErrorIs(t, err, storemod.ErrNotFound)
 		ms.AssertNotCalled(t, "GetAssetsByWalletID")
 	})
 

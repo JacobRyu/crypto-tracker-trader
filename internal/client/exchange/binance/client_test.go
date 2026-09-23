@@ -19,7 +19,7 @@ func TestGetBalances_Success(t *testing.T) {
 		assert.NotEmpty(t, r.URL.Query().Get("signature"))
 		assert.Equal(t, "test-api-key", r.Header.Get("X-MBX-APIKEY"))
 
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"balances": []map[string]string{
 				{"asset": "BTC", "free": "0.50000000", "locked": "0.00000000"},
 				{"asset": "ETH", "free": "5.00000000", "locked": "1.00000000"},
@@ -42,7 +42,7 @@ func TestGetBalances_Success(t *testing.T) {
 func TestGetBalances_APIError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"code": -2014,
 			"msg":  "API-key format invalid.",
 		})
@@ -60,7 +60,7 @@ func TestGetTradeHistory_Success(t *testing.T) {
 		assert.Equal(t, "/api/v3/myTrades", r.URL.Path)
 		assert.Equal(t, "BTCUSDT", r.URL.Query().Get("symbol"))
 
-		json.NewEncoder(w).Encode([]map[string]interface{}{
+		_ = json.NewEncoder(w).Encode([]map[string]interface{}{
 			{
 				"symbol":  "BTCUSDT",
 				"id":      12345,
