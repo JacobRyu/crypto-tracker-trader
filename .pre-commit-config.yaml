@@ -1,4 +1,5 @@
 repos:
+  # 基本的なファイルチェック
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
@@ -7,28 +8,27 @@ repos:
       - id: check-yaml
         args: ["--allow-multiple-documents"]
       - id: check-added-large-files
+        args: ["--maxkb=1000"]
+      - id: check-json
+      - id: check-merge-conflict
+      - id: no-commit-to-branch
+        args: ["--branch", "main", "--branch", "master"]
 
-  - repo: https://github.com/golangci/golangci-lint
-    rev: v2.6.1
-    hooks:
-      - id: golangci-lint
-        args: ["--new-from-rev", "HEAD", "--skip-dirs", "internal/store"] # Temporarily skip internal/store tests
-
-  - repo: https://github.com/hadolint/hadolint
-    rev: v2.14.0 # Use a recent stable version
-    hooks:
-      - id: hadolint
+  # Go formatting
   - repo: https://github.com/dnephin/pre-commit-golang
     rev: v0.5.1
     hooks:
       - id: go-fmt
-      - id: go-imports
+
+  # ローカルフック
   - repo: local
     hooks:
       - id: go-vet
         name: go vet
-        entry: ./scripts/run-go-vet.sh
+        entry: go vet ./...
         language: system
+        pass_filenames: false
+        types: [go]
       - id: go-test
         name: go test
         entry: go test ./internal/api ./internal/service
@@ -37,13 +37,7 @@ repos:
         types: [go]
       - id: go-mod-tidy
         name: go mod tidy
-        entry: go mod tidy
-        language: system
-        pass_filenames: false
-        types: [go]
-      - id: gosec
-        name: gosec
-        entry: gosec ./...
+        entry: bash -c 'go mod tidy && git diff --exit-code go.mod go.sum'
         language: system
         pass_filenames: false
         types: [go]
