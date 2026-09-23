@@ -311,6 +311,36 @@ curl -s http://localhost:8080/metrics
 #     metrics_path: '/metrics'
 ```
 
+#### インフラエクスポーター
+
+| エクスポーター | 対象 | ポート | 説明 |
+|---------------|------|--------|------|
+| Redis Exporter | Redis | 9121 | `oliver006/redis_exporter:v1.67.0` - メモリ、接続数、キーサイズ |
+| Kafka Exporter | Kafka | 9308 | `danielqsj/kafka-exporter:v1.8.0` - パーティション、消費者グループ、ラグ |
+| PostgreSQL Exporter | PostgreSQL | 9187 | `prometheuscommunity/postgres-exporter:v0.16.0` - 接続数、クエリ統計、DBサイズ |
+
+**Prometheus スクレイプ設定:**
+
+```yaml
+scrape_configs:
+  - job_name: 'crypto-tracker-app'
+    static_configs:
+      - targets: ['crypto-tracker-app:8080']
+    metrics_path: '/metrics'
+
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+
+  - job_name: 'kafka-exporter'
+    static_configs:
+      - targets: ['kafka-exporter:9308']
+
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+```
+
 #### OpenTelemetry / Tempo トレーシング
 
 | 項目 | 状態 |
@@ -326,7 +356,8 @@ curl -s http://localhost:8080/metrics
 | Kafka | `event/kafka.go` - PublishPriceEventにspan（kafka.publish_price_event） |
 | OTel Collector | `deployments/k8s/otel-collector.yaml` - OTLP受信 → Tempo + Prometheus エクスポート |
 | Tempo | `deployments/k8s/tempo.yaml` - `grafana/tempo:2.6.1`、local storage、NodePort 30320 |
-| Grafana | `deployments/k8s/grafana-datasources.yaml` - Tempo データソース自動設定 |
+| Grafana | `deployments/k8s/grafana-datasources.yaml` - Prometheus + Tempo データソース自動設定 |
+| Grafanaダッシュボード | `deployments/k8s/grafana-dashboards.yaml` - Infrastructure Overview ダッシュボード |
 | テスト | `go vet` パス、全テストパス（store 層 DB 依存テスト除く） |
 
 **トレース可視化方法:**
@@ -342,6 +373,15 @@ curl -s http://localhost:8080/metrics
 ```
 アプリ → OTLP gRPC → otel-collector:4317 → Tempo:4317
                                          → Prometheus:8889（メトリクス）
+
+Prometheus ← スクレイプ ← crypto-tracker-app:8080/metrics
+                         ← redis-exporter:9121/metrics
+                         ← kafka-exporter:9308/metrics
+                         ← postgres-exporter:9187/metrics
+
+Grafana:3000 → Prometheus（メトリクス查询）
+            → Tempo（トレース探索）
+
 Tempo ← HTTP ← Grafana:3000（探索・可視化）
 ```
 
