@@ -38,12 +38,14 @@ k8s-deploy:
 	kubectl apply -f deployments/k8s/kafka.yaml
 	kubectl apply -f deployments/k8s/prometheus.yaml
 	kubectl apply -f deployments/k8s/grafana.yaml
+	kubectl apply -f deployments/k8s/grafana-datasources.yaml
 	kubectl apply -f deployments/k8s/grafana-dashboards.yaml
 	kubectl apply -f deployments/k8s/redis-exporter.yaml
 	kubectl apply -f deployments/k8s/kafka-exporter.yaml
 	kubectl apply -f deployments/k8s/postgres-exporter.yaml
 	kubectl apply -f deployments/k8s/otel-collector.yaml
 	kubectl apply -f deployments/k8s/tempo.yaml
+	kubectl apply -f deployments/k8s/loki.yaml
 	kubectl apply -f deployments/k8s/app.yaml
 	@echo "Waiting for pods to be ready..."
 	kubectl wait --for=condition=ready pod -l app=postgres -n ctt-dev --timeout=120s
@@ -51,6 +53,7 @@ k8s-deploy:
 	kubectl wait --for=condition=ready pod -l app=kafka -n ctt-dev --timeout=120s
 	kubectl wait --for=condition=ready pod -l app=prometheus -n ctt-dev --timeout=120s
 	kubectl wait --for=condition=ready pod -l app=grafana -n ctt-dev --timeout=120s
+	kubectl wait --for=condition=ready pod -l app=loki -n ctt-dev --timeout=120s
 	kubectl wait --for=condition=ready pod -l app=crypto-tracker-app -n ctt-dev --timeout=120s
 	@echo "Deployment complete!"
 
