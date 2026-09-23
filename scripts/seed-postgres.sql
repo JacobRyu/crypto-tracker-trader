@@ -1,5 +1,7 @@
 -- PostgreSQL テストデータ生成スクリプト
--- 使い方: psql -h localhost -U ctt -d crypto -f scripts/seed-postgres.sql
+-- 使い方:
+--   kubectl exec -i deployment/postgres -n ctt-dev -- psql -U ctt -d crypto < scripts/seed-postgres.sql
+--   または: ./scripts/seed-postgres.sh
 
 -- 既存データをクリーンアップ（オプション）
 -- TRUNCATE TABLE portfolio_assets, portfolio_snapshots, exchange_balances, exchange_credentials, user_defi_positions, user_assets, user_wallets, user_auth_providers, user_credentials, users, asset_prices CASCADE;

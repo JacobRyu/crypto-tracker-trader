@@ -1,21 +1,22 @@
 #!/bin/bash
-# Kafka テストデータ生成スクリプト
+# Kafka テストデータ生成スクリプト（Pod内kubectl exec）
 # 使い方: ./scripts/seed-kafka.sh
 
 set -e
 
-KAFKA_BROKER="${KAFKA_BROKER:-localhost:9092}"
+NAMESPACE="${NAMESPACE:-ctt-dev}"
+KAFKA_POD="${KAFKA_POD:-kafka}"
 TOPIC="${KAFKA_TOPIC:-price-events}"
 
 echo "=== Kafka テストデータ生成 ==="
-echo "ブローカー: ${KAFKA_BROKER}"
+echo "対象: ${KAFKA_POD} (${NAMESPACE})"
 echo "トピック: ${TOPIC}"
 echo ""
 
 # Kafka接続テスト
-if ! kafka-topics --bootstrap-server "$KAFKA_BROKER" --list > /dev/null 2>&1; then
+if ! kubectl exec -n "$NAMESPACE" "$KAFKA_POD" -- kafka-topics --bootstrap-server localhost:9092 --list > /dev/null 2>&1; then
   echo "エラー: Kafkaに接続できません"
-  echo "Kafkaが起動していることを確認してください"
+  echo "Podが起動していることを確認してください: kubectl get pods -n $NAMESPACE"
   exit 1
 fi
 
@@ -23,9 +24,9 @@ echo "✓ Kafka接続成功"
 echo ""
 
 # トピック存在確認（なければ作成）
-if ! kafka-topics --bootstrap-server "$KAFKA_BROKER" --list | grep -q "^${TOPIC}$"; then
+if ! kubectl exec -n "$NAMESPACE" "$KAFKA_POD" -- kafka-topics --bootstrap-server localhost:9092 --list 2>/dev/null | grep -q "^${TOPIC}$"; then
   echo "トピック '${TOPIC}' を作成します..."
-  kafka-topics --bootstrap-server "$KAFKA_BROKER" \
+  kubectl exec -n "$NAMESPACE" "$KAFKA_POD" -- kafka-topics --bootstrap-server localhost:9092 \
     --create \
     --topic "$TOPIC" \
     --partitions 3 \
@@ -35,47 +36,41 @@ fi
 
 echo ""
 
+# タイムスタンプ生成（Unix秒）
+NOW=$(date +%s)
+HOUR_AGO=$((NOW - 3600))
+
 # =====================================================
 # 1. 価格イベントメッセージ
 # =====================================================
 echo "--- 価格イベントメッセージ ---"
 
-# タイムスタンプ生成（Unix秒）
-NOW=$(date +%s)
-HOUR_AGO=$((NOW - 3600))
-MIN_AGO=$((NOW - 300))
-
-# BTC 価格イベント
-echo '{"symbol":"BTC","price_usd":"67500.00000000","source":"coingecko","timestamp":'$NOW'}' | \
-  kafka-console-producer --bootstrap-server "$KAFKA_BROKER" --topic "$TOPIC" --property parse.key=true --property key.separator=: <<EOF
+# BTC
+kubectl exec -n "$NAMESPACE" "$KAFKA_POD" -- kafka-console-producer --bootstrap-server localhost:9092 --topic "$TOPIC" --property parse.key=true --property key.separator=: <<EOF
 BTC:{"symbol":"BTC","price_usd":"67500.00000000","source":"coingecko","timestamp":$NOW}
 EOF
 echo "✓ BTC 価格イベント (現在)"
 
-# ETH 価格イベント
-echo '{"symbol":"ETH","price_usd":"3500.00000000","source":"coingecko","timestamp":'$NOW'}' | \
-  kafka-console-producer --bootstrap-server "$KAFKA_BROKER" --topic "$TOPIC" --property parse.key=true --property key.separator=: <<EOF
+# ETH
+kubectl exec -n "$NAMESPACE" "$KAFKA_POD" -- kafka-console-producer --bootstrap-server localhost:9092 --topic "$TOPIC" --property parse.key=true --property key.separator=: <<EOF
 ETH:{"symbol":"ETH","price_usd":"3500.00000000","source":"coingecko","timestamp":$NOW}
 EOF
 echo "✓ ETH 価格イベント (現在)"
 
-# SOL 価格イベント
-echo '{"symbol":"SOL","price_usd":"180.50000000","source":"coingecko","timestamp":'$NOW'}' | \
-  kafka-console-producer --bootstrap-server "$KAFKA_BROKER" --topic "$TOPIC" --property parse.key=true --property key.separator=: <<EOF
+# SOL
+kubectl exec -n "$NAMESPACE" "$KAFKA_POD" -- kafka-console-producer --bootstrap-server localhost:9092 --topic "$TOPIC" --property parse.key=true --property key.separator=: <<EOF
 SOL:{"symbol":"SOL","price_usd":"180.50000000","source":"coingecko","timestamp":$NOW}
 EOF
 echo "✓ SOL 価格イベント (現在)"
 
-# DOGE 価格イベント
-echo '{"symbol":"DOGE","price_usd":"0.12000000","source":"coingecko","timestamp":'$NOW'}' | \
-  kafka-console-producer --bootstrap-server "$KAFKA_BROKER" --topic "$TOPIC" --property parse.key=true --property key.separator=: <<EOF
+# DOGE
+kubectl exec -n "$NAMESPACE" "$KAFKA_POD" -- kafka-console-producer --bootstrap-server localhost:9092 --topic "$TOPIC" --property parse.key=true --property key.separator=: <<EOF
 DOGE:{"symbol":"DOGE","price_usd":"0.12000000","source":"coingecko","timestamp":$NOW}
 EOF
 echo "✓ DOGE 価格イベント (現在)"
 
-# BNB 価格イベント
-echo '{"symbol":"BNB","price_usd":"580.00000000","source":"coingecko","timestamp":'$NOW'}' | \
-  kafka-console-producer --bootstrap-server "$KAFKA_BROKER" --topic "$TOPIC" --property parse.key=true --property key.separator=: <<EOF
+# BNB
+kubectl exec -n "$NAMESPACE" "$KAFKA_POD" -- kafka-console-producer --bootstrap-server localhost:9092 --topic "$TOPIC" --property parse.key=true --property key.separator=: <<EOF
 BNB:{"symbol":"BNB","price_usd":"580.00000000","source":"coingecko","timestamp":$NOW}
 EOF
 echo "✓ BNB 価格イベント (現在)"
@@ -87,14 +82,12 @@ echo ""
 # =====================================================
 echo "--- 過去の価格イベント ---"
 
-echo '{"symbol":"BTC","price_usd":"67200.00000000","source":"coingecko","timestamp":'$HOUR_AGO'}' | \
-  kafka-console-producer --bootstrap-server "$KAFKA_BROKER" --topic "$TOPIC" --property parse.key=true --property key.separator=: <<EOF
+kubectl exec -n "$NAMESPACE" "$KAFKA_POD" -- kafka-console-producer --bootstrap-server localhost:9092 --topic "$TOPIC" --property parse.key=true --property key.separator=: <<EOF
 BTC:{"symbol":"BTC","price_usd":"67200.00000000","source":"coingecko","timestamp":$HOUR_AGO}
 EOF
 echo "✓ BTC 価格イベント (1時間前)"
 
-echo '{"symbol":"ETH","price_usd":"3480.00000000","source":"coingecko","timestamp":'$HOUR_AGO'}' | \
-  kafka-console-producer --bootstrap-server "$KAFKA_BROKER" --topic "$TOPIC" --property parse.key=true --property key.separator=: <<EOF
+kubectl exec -n "$NAMESPACE" "$KAFKA_POD" -- kafka-console-producer --bootstrap-server localhost:9092 --topic "$TOPIC" --property parse.key=true --property key.separator=: <<EOF
 ETH:{"symbol":"ETH","price_usd":"3480.00000000","source":"coingecko","timestamp":$HOUR_AGO}
 EOF
 echo "✓ ETH 価格イベント (1時間前)"
@@ -105,11 +98,8 @@ echo ""
 # 3. メッセージ確認
 # =====================================================
 echo "--- メッセージ確認 ---"
-echo "直近5件のメッセージ:"
-timeout 2 kafka-console-consumer --bootstrap-server "$KAFKA_BROKER" \
-  --topic "$TOPIC" \
-  --from-beginning \
-  --max-messages 10 2>/dev/null || true
+echo "トピック一覧:"
+kubectl exec -n "$NAMESPACE" "$KAFKA_POD" -- kafka-topics --bootstrap-server localhost:9092 --list 2>/dev/null || echo "  (取得不可)"
 
 echo ""
 

@@ -5,6 +5,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NAMESPACE="${NAMESPACE:-ctt-dev}"
 
 # オプション解析
 POSTGRES=false
@@ -58,11 +59,18 @@ echo "=========================================="
 echo "  テストデータ生成スクリプト"
 echo "=========================================="
 echo ""
+echo "名前空間: ${NAMESPACE}"
+echo ""
 echo "実行内容:"
 [ "$POSTGRES" = true ] && echo "  ✓ PostgreSQL テストデータ"
 [ "$REDIS" = true ] && echo "  ✓ Redis テストデータ"
 [ "$KAFKA" = true ] && echo "  ✓ Kafka テストメッセージ"
 [ "$API" = true ] && echo "  ✓ API テストリクエスト"
+echo ""
+
+# ポッドの状態確認
+echo "--- ポッドの状態確認 ---"
+kubectl get pods -n "$NAMESPACE" -l "app in (postgres,redis,kafka)" --no-headers 2>/dev/null || echo "警告: ポッドが見つかりません"
 echo ""
 
 # =====================================================
@@ -74,15 +82,7 @@ if [ "$POSTGRES" = true ]; then
   echo "=========================================="
   echo ""
 
-  # PostgreSQL接続テスト
-  if ! psql -h localhost -U ctt -d crypto -c "SELECT 1" > /dev/null 2>&1; then
-    echo "警告: PostgreSQLに接続できません"
-    echo "手動で実行してください: psql -h localhost -U ctt -d crypto -f $SCRIPT_DIR/seed-postgres.sql"
-  else
-    echo "✓ PostgreSQL接続成功"
-    psql -h localhost -U ctt -d crypto -f "$SCRIPT_DIR/seed-postgres.sql"
-    echo "✓ PostgreSQL テストデータ生成完了"
-  fi
+  bash "$SCRIPT_DIR/seed-postgres.sh"
   echo ""
 fi
 
@@ -96,7 +96,6 @@ if [ "$REDIS" = true ]; then
   echo ""
 
   bash "$SCRIPT_DIR/seed-redis.sh"
-  echo "✓ Redis テストデータ生成完了"
   echo ""
 fi
 
@@ -110,7 +109,6 @@ if [ "$KAFKA" = true ]; then
   echo ""
 
   bash "$SCRIPT_DIR/seed-kafka.sh"
-  echo "✓ Kafka テストメッセージ生成完了"
   echo ""
 fi
 
@@ -124,7 +122,6 @@ if [ "$API" = true ]; then
   echo ""
 
   bash "$SCRIPT_DIR/test-api.sh"
-  echo "✓ API テストリクエスト完了"
   echo ""
 fi
 
@@ -142,7 +139,6 @@ echo "生成されたデータ:"
 [ "$API" = true ] && echo "  API: 17リクエスト実行"
 echo ""
 echo "次のステップ:"
-echo "  1. アプリケーションを起動: go run ./cmd/server"
-echo "  2. ポートフォリーズ: ./scripts/port-forward.sh"
-echo "  3. Grafanaで確認: http://localhost:3000"
+echo "  1. ポートフォリーズ: ./scripts/port-forward.sh"
+echo "  2. Grafanaで確認: http://localhost:3000"
 echo ""
