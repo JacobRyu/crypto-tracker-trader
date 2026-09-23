@@ -73,12 +73,12 @@ func TestGetPositions_WithLPPosition(t *testing.T) {
 	posData := buildPositionsResponse(
 		common.HexToAddress("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"), // WETH
 		common.HexToAddress("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"), // USDC
-		3000,   // 0.3% fee
-		-60000, // tickLower
-		60000,  // tickUpper
-		big.NewInt(1000000000),                // liquidity
-		big.NewInt(500),                       // owed0
-		big.NewInt(250),                       // owed1
+		3000,                   // 0.3% fee
+		-60000,                 // tickLower
+		60000,                  // tickUpper
+		big.NewInt(1000000000), // liquidity
+		big.NewInt(500),        // owed0
+		big.NewInt(250),        // owed1
 	)
 	eth.On("CallContract", mock.Anything, mock.MatchedBy(func(msg ethereum.CallMsg) bool {
 		return len(msg.Data) >= 4 && msg.Data[0] == 0x99 && msg.Data[1] == 0xfb

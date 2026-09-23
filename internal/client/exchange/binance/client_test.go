@@ -62,12 +62,12 @@ func TestGetTradeHistory_Success(t *testing.T) {
 
 		json.NewEncoder(w).Encode([]map[string]interface{}{
 			{
-				"symbol":   "BTCUSDT",
-				"id":       12345,
-				"price":    "60000.00",
-				"qty":      "0.01",
-				"isBuyer":  true,
-				"time":     time.Now().UnixMilli(),
+				"symbol":  "BTCUSDT",
+				"id":      12345,
+				"price":   "60000.00",
+				"qty":     "0.01",
+				"isBuyer": true,
+				"time":    time.Now().UnixMilli(),
 			},
 			{
 				"symbol":  "BTCUSDT",

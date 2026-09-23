@@ -7,9 +7,9 @@ import (
 
 // Balance represents an asset balance at an exchange.
 type Balance struct {
-	Symbol  string `json:"symbol"`
-	Free    string `json:"free"`
-	Locked  string `json:"locked"`
+	Symbol string `json:"symbol"`
+	Free   string `json:"free"`
+	Locked string `json:"locked"`
 }
 
 // Trade represents a single executed trade.
