@@ -68,8 +68,11 @@ func (a *API) TriggerPriceSync(c *gin.Context) {
 		return
 	}
 
+	symbols := a.priceSymbols
+	ctx := c.Request.Context()
+
 	go func() {
-		if err := a.priceService.FetchAndSave(c.Request.Context(), a.priceSymbols); err != nil {
+		if err := a.priceService.FetchAndSave(ctx, symbols); err != nil {
 			log.Printf("Manual price sync error: %v", err)
 		}
 	}()
