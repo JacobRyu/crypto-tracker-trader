@@ -144,7 +144,7 @@ func (c *Client) doWithRetry(req *http.Request) (*http.Response, error) {
 			return nil, fmt.Errorf("http request: %w", err)
 		}
 		if resp.StatusCode == http.StatusTooManyRequests {
-			resp.Body.Close()
+			resp.Body.Close() //nolint:errcheck
 			select {
 			case <-req.Context().Done():
 				return nil, req.Context().Err()
@@ -154,7 +154,7 @@ func (c *Client) doWithRetry(req *http.Request) (*http.Response, error) {
 			}
 		}
 		if resp.StatusCode != http.StatusOK {
-			resp.Body.Close()
+			resp.Body.Close() //nolint:errcheck
 			return nil, fmt.Errorf("unexpected status %d", resp.StatusCode)
 		}
 		return resp, nil
